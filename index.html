@@ -90,7 +90,7 @@
 
     <header class="mb-4 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm">
         <div>
-            <h1 class="text-xl font-bold text-gray-800">雲端溝通輔助 (Bilingual)</h1>
+            <h1 class="text-xl font-bold text-gray-800">溝通輔助 </h1>
             <div class="flex items-center gap-2">
                 <span id="sync-status" class="w-2 h-2 rounded-full bg-yellow-500"></span>
                 <p id="mode-text" class="text-xs text-gray-500">初始化中...</p>
@@ -103,18 +103,15 @@
 
     <nav class="nav-sticky mb-6 py-2">
         <div class="grid grid-cols-3 gap-2 text-sm">
-            <!-- 增加按鈕高度至 py-6 並提升字體至 text-base -->
-            <button onclick="scrollToCategory('食物飲品')" class="bg-green-500 text-white py-6 rounded-xl text-base font-bold shadow-md active:scale-95 transition-transform flex flex-col items-center justify-center">
-                <span>🍎 食物</span>
-                <span class="text-[10px] opacity-80">Food</span>
+            <!-- 修改：移除英文，保留純中文按鈕 -->
+            <button onclick="scrollToCategory('食物飲品')" class="bg-green-500 text-white py-6 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center">
+                🍎 食物飲品
             </button>
-            <button onclick="scrollToCategory('日常需求')" class="bg-blue-500 text-white py-6 rounded-xl text-base font-bold shadow-md active:scale-95 transition-transform flex flex-col items-center justify-center">
-                <span>🏠 日常</span>
-                <span class="text-[10px] opacity-80">Home</span>
+            <button onclick="scrollToCategory('日常需求')" class="bg-blue-500 text-white py-6 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center">
+                🏠 日常需求
             </button>
-            <button onclick="scrollToCategory('活動')" class="bg-purple-500 text-white py-6 rounded-xl text-base font-bold shadow-md active:scale-95 transition-transform flex flex-col items-center justify-center">
-                <span>🏃 活動</span>
-                <span class="text-[10px] opacity-80">Act</span>
+            <button onclick="scrollToCategory('活動')" class="bg-purple-500 text-white py-6 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center">
+                🏃 活動項目
             </button>
         </div>
     </nav>
@@ -131,7 +128,6 @@
     <div id="overlay" onclick="hideMessage()">
         <div id="overlay-emoji" class="text-9xl mb-8"></div>
         <div id="overlay-text" class="text-5xl font-bold text-black break-words w-full px-6 leading-tight"></div>
-        <!-- 修改：放大英文並改為藍色 -->
         <div id="overlay-text-en" class="text-5xl font-bold text-blue-700 mt-6 break-words w-full px-6 italic"></div>
         <div class="mt-20 text-gray-300 text-xl italic">Tap to close / 點擊關閉</div>
     </div>
@@ -307,7 +303,6 @@
                                 <button class="delete-btn" onclick="deleteFromCloud(event, '${cat}', ${item.originalIdx})">✕</button>
                                 <span class="text-4xl mb-1">${item.emoji}</span>
                                 <span class="text-lg leading-tight ${colorClass}">${item.text}</span>
-                                <!-- 修改：主畫面英文放大並改為藍色 -->
                                 <span class="text-[14px] text-blue-700 font-bold leading-tight mt-1">${item.textEn || ''}</span>
                             </div>
                         `).join('')}
