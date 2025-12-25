@@ -3,210 +3,409 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>日常溝通板 - 穩定連線版</title>
+    <title>日常溝通板 - 中英對照版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            touch-action: manipulation;
+            background-color: #f1f5f9;
+            padding-bottom: 80px;
+            scroll-behavior: smooth;
+        }
         .grid-item {
             aspect-ratio: 1 / 1;
-            background: white;
-            border-radius: 1.5rem;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-            transition: transform 0.1s;
-            cursor: pointer;
+            font-weight: bold;
+            border-radius: 1.25rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: relative;
+            background: white;
+            transition: all 0.2s;
             padding: 10px;
             text-align: center;
         }
-        .grid-item:active { transform: scale(0.95); background: #f1f5f9; }
+        .grid-item:active:not(.editing) {
+            transform: scale(0.92);
+            filter: brightness(0.9);
+        }
         #overlay {
             display: none;
             position: fixed;
-            inset: 0;
-            background: white;
-            z-index: 9999;
-            flex-direction: column;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 2000;
+            flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 20px;
+        }
+        .delete-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: none;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            font-size: 16px;
+            z-index: 10;
+            border: 2px solid white;
         }
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
+        .editing .delete-btn {
+            display: flex;
+        }
+        .editing {
+            animation: shake 0.3s infinite;
+        }
+        @keyframes shake {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(1.5deg); }
+            75% { transform: rotate(-1.5deg); }
+            100% { transform: rotate(0deg); }
+        }
+        .nav-sticky {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(241, 245, 249, 0.9);
+            backdrop-filter: blur(8px);
+        }
+        .loader {
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #3b82f6;
+            border-top: 4px solid #3498db;
             border-radius: 50%;
+            width: 30px;
+            height: 30px;
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="p-4 pb-20">
+<body class="p-4">
 
-    <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm">
+    <header class="mb-4 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm">
         <div>
-            <h1 class="text-xl font-bold text-slate-800">雲端溝通板</h1>
+            <h1 class="text-xl font-bold text-gray-800">雲端溝通輔助 (Bilingual)</h1>
             <div class="flex items-center gap-2">
-                <div id="status-dot" class="w-2 h-2 rounded-full bg-red-500"></div>
-                <span id="status-text" class="text-xs text-slate-500">正在檢查權限...</span>
+                <span id="sync-status" class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                <p id="mode-text" class="text-xs text-gray-500">初始化中...</p>
             </div>
         </div>
-        <button id="edit-btn" onclick="toggleEdit()" class="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl font-medium">管理</button>
+        <button id="edit-toggle" onclick="toggleEditMode()" class="bg-gray-100 px-4 py-2 rounded-xl font-medium text-gray-600">
+            ⚙️ 管理 / Edit
+        </button>
     </header>
 
-    <!-- 骨架屏或載入畫面 -->
-    <div id="loading-screen" class="fixed inset-0 bg-slate-50 flex flex-col items-center justify-center z-[50]">
-        <div class="loading-spinner mb-4"></div>
-        <p id="loading-detail" class="text-slate-400 text-sm">正在初始化 Firebase...</p>
+    <nav class="nav-sticky mb-6 py-2">
+        <div class="grid grid-cols-3 gap-2 text-sm">
+            <button onclick="scrollToCategory('食物飲品')" class="bg-green-500 text-white py-6 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center">
+                🍎 食物飲品
+            </button>
+            <button onclick="scrollToCategory('日常需求')" class="bg-blue-500 text-white py-6 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center">
+                🏠 日常需求
+            </button>
+            <button onclick="scrollToCategory('活動')" class="bg-purple-500 text-white py-6 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center">
+                🏃 活動項目
+            </button>
+        </div>
+    </nav>
+
+    <div id="board-container" class="space-y-8">
+        <div class="flex flex-col items-center justify-center p-10">
+            <div class="loader mb-4"></div>
+            <p id="loading-msg" class="text-gray-400 text-sm">正在嘗試連線至 Firebase...</p>
+            <button id="bypass-btn" onclick="useOfflineData()" class="mt-4 text-blue-500 underline text-xs hidden">直接載入離線資料</button>
+        </div>
     </div>
 
-    <div id="app-content" class="space-y-8 opacity-0 transition-opacity duration-500">
-        <!-- 分類與按鈕會由 JS 生成 -->
+    <!-- 放大顯示層 -->
+    <div id="overlay" onclick="hideMessage()">
+        <div id="overlay-emoji" class="text-9xl mb-8"></div>
+        <div id="overlay-text" class="text-5xl font-bold text-black break-words w-full px-6 leading-tight"></div>
+        <div id="overlay-text-en" class="text-5xl font-bold text-blue-700 mt-6 break-words w-full px-6 italic"></div>
+        <div class="mt-20 text-gray-300 text-xl italic">Tap to close / 點擊關閉</div>
     </div>
 
-    <div id="overlay" onclick="this.style.display='none'">
-        <div id="ov-emoji" class="text-[120px] mb-4"></div>
-        <div id="ov-zh" class="text-5xl font-black text-slate-900 text-center px-4"></div>
-        <div id="ov-en" class="text-3xl font-bold text-blue-600 mt-6 text-center italic px-4"></div>
-        <div class="mt-20 text-slate-300 animate-pulse">點擊任意處關閉</div>
+    <!-- 新增對話框 -->
+    <div id="add-modal" class="fixed inset-0 bg-black/60 hidden z-[3000] flex items-center justify-center p-6 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl overflow-y-auto max-h-[90vh]">
+            <h3 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">新增按鈕 (New Button)</h3>
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">分類 (Category)</label>
+            <select id="new-category" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-4 text-lg">
+                <option value="食物飲品">🍎 食物飲品 (Food)</option>
+                <option value="日常需求">🏠 日常需求 (Home)</option>
+                <option value="活動">🏃 活動 (Activity)</option>
+                <option value="其他">💬 其他 (Other)</option>
+            </select>
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">圖標 (Emoji)</label>
+            <input type="text" id="new-emoji" placeholder="例如: 🍱" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-4 text-lg">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">中文名稱 (Chinese Text)</label>
+            <input type="text" id="new-text" placeholder="例如: 我想喝水" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-4 text-lg">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">英文翻譯 (English Translation)</label>
+            <input type="text" id="new-text-en" placeholder="e.g. I want some water" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-6 text-lg">
+            
+            <div class="flex gap-3">
+                <button onclick="closeAddModal()" class="flex-1 bg-gray-100 py-4 rounded-2xl font-bold text-gray-500">取消/Cancel</button>
+                <button onclick="saveToCloud()" class="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200">儲存/Save</button>
+            </div>
+        </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 1. 環境設定
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'als-voice-pro';
-        
-        // 初始化 Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBE6-h-OVrfjTF1fgRCnJ6FjuCADjWcH8Y",
+            authDomain: "mon-board.firebaseapp.com",
+            projectId: "mon-board",
+            storageBucket: "mon-board.firebasestorage.app",
+            messagingSenderId: "1086188282386",
+            appId: "1:1086188282386:web:61f0b632c8d29aff7beecb",
+            measurementId: "G-FB4B7GG7SX"
+        };
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const appId = "mon-board-main";
 
-        // 2. 預設資料 (萬一雲端是空的)
-        const DEFAULT_DATA = {
-            "🏠 日常": [
-                { emoji: "💧", zh: "我想喝水", en: "I want water" },
-                { emoji: "🚻", zh: "上廁所", en: "Go to toilet" },
-                { emoji: "💤", zh: "我想睡覺", en: "I want to sleep" }
-            ],
-            "🍎 食物": [
-                { emoji: "🥣", zh: "我想吃粥", en: "I want porridge" },
-                { emoji: "🍌", zh: "吃水果", en: "Eat some fruit" }
-            ],
-            "🏃 活動": [
-                { emoji: "🪟", zh: "開窗戶", en: "Open window" },
-                { emoji: "🛋️", zh: "去客廳", en: "Go to living room" }
-            ]
-        };
-
-        let currentData = {};
         let isEditMode = false;
+        let categories = ["食物飲品", "日常需求", "活動", "其他"];
+        let currentData = {};
+        let user = null;
+        let isSyncing = false;
 
-        // 3. 核心初始化流程
-        async function startApp() {
-            const detail = document.getElementById('loading-detail');
-            
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'configs', 'main');
+
+        const timeoutTracker = setTimeout(() => {
+            if (!isSyncing) {
+                document.getElementById('bypass-btn').classList.remove('hidden');
+                document.getElementById('loading-msg').innerText = "連線緩慢，可點擊下方載入離線資料";
+            }
+        }, 8000);
+
+        async function init() {
             try {
-                // 第一步：驗證
-                detail.innerText = "驗證身分中...";
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        detail.innerText = "連線雲端資料庫...";
-                        setupDataListener();
-                    }
+                document.getElementById('mode-text').innerText = "驗證身分...";
+                await signInAnonymously(auth);
+                onAuthStateChanged(auth, (u) => {
+                    user = u;
+                    if (user) subscribeToData();
                 });
-
             } catch (err) {
-                console.error("Init Error:", err);
-                detail.innerText = "連線失敗，請檢查網路設定。";
+                console.error("Auth Error:", err);
+                handleConnectionError(err);
             }
         }
 
-        // 4. 資料監聽與自動建立
-        function setupDataListener() {
-            const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'userConfig', 'v1');
-            
-            onSnapshot(configRef, async (snap) => {
-                if (!snap.exists()) {
-                    // 如果雲端沒資料，立刻建立初始版本
-                    await setDoc(configRef, { board: DEFAULT_DATA });
-                    return; // 之後 Snapshot 會再次觸發
+        function subscribeToData() {
+            if (!user) return;
+            onSnapshot(docRef, (docSnap) => {
+                clearTimeout(timeoutTracker);
+                isSyncing = true;
+                if (docSnap.exists()) {
+                    currentData = docSnap.data();
+                    Object.keys(currentData).forEach(cat => {
+                        currentData[cat].forEach(item => {
+                            if (!item.textEn) item.textEn = "";
+                            if (item.count === undefined) item.count = 0;
+                        });
+                    });
+                } else {
+                    currentData = getInitialData();
+                    setDoc(docRef, currentData);
                 }
-
-                currentData = snap.data().board;
-                renderApp();
-                
-                // 關閉載入畫面
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('app-content').classList.remove('opacity-0');
-                document.getElementById('status-dot').className = "w-2 h-2 rounded-full bg-green-500";
-                document.getElementById('status-text').innerText = "已連線至雲端";
-            }, (err) => {
-                console.error("Firestore Error:", err);
-                document.getElementById('loading-detail').innerText = "權限不足，請聯絡管理員。";
+                document.getElementById('sync-status').classList.replace('bg-yellow-500', 'bg-green-500');
+                document.getElementById('mode-text').innerText = "已同步/Synced";
+                renderBoard();
+            }, (error) => {
+                handleConnectionError(error);
             });
         }
 
-        // 5. 渲染畫面
-        function renderApp() {
-            const container = document.getElementById('app-content');
+        function handleConnectionError(err) {
+            clearTimeout(timeoutTracker);
+            document.getElementById('mode-text').innerText = "連線失敗/Error";
+            document.getElementById('sync-status').classList.replace('bg-yellow-500', 'bg-red-500');
+            useOfflineData();
+        }
+
+        window.useOfflineData = function() {
+            clearTimeout(timeoutTracker);
+            currentData = getInitialData();
+            document.getElementById('mode-text').innerText = "離線模式/Offline";
+            renderBoard();
+        };
+
+        function getInitialData() {
+            return {
+                "食物飲品": [
+                    {text: "吃稀飯", textEn: "Eat Porridge", emoji: "🥣", count: 0}, 
+                    {text: "喝水", textEn: "Drink Water", emoji: "💧", count: 0}
+                ],
+                "日常需求": [
+                    {text: "去廁所", textEn: "Go to Toilet", emoji: "🚽", count: 0}, 
+                    {text: "要洗臉", textEn: "Wash Face", emoji: "🧼", count: 0},
+                    {text: "要翻身", textEn: "Turn Over", emoji: "🛌", count: 0}
+                ],
+                "活動": [
+                    {text: "想散步", textEn: "Go for walk", emoji: "🚶", count: 0}, 
+                    {text: "看電視", textEn: "Watch TV", emoji: "📺", count: 0}
+                ],
+                "其他": [
+                    {text: "謝謝你", textEn: "Thank you", emoji: "❤️", count: 0},
+                    {text: "不舒服", textEn: "Uncomfortable", emoji: "⚠️", count: 0}
+                ]
+            };
+        }
+
+        window.renderBoard = function() {
+            const container = document.getElementById('board-container');
             container.innerHTML = '';
 
-            for (const [catName, items] of Object.entries(currentData)) {
-                const section = document.createElement('div');
+            categories.forEach(cat => {
+                let items = currentData[cat] || [];
+                if (items.length === 0 && !isEditMode) return;
+
+                // 修復：確保根據 count 排序，點擊次數多的排在前面
+                const sortedItemsWithOriginalIndex = items.map((item, originalIdx) => ({...item, originalIdx}));
+                sortedItemsWithOriginalIndex.sort((a, b) => (b.count || 0) - (a.count || 0));
+
+                let colorClass = "text-blue-600";
+                if(cat === "活動") colorClass = "text-purple-600";
+                if(cat === "食物飲品") colorClass = "text-green-600";
+                if(cat === "日常需求") colorClass = "text-blue-600";
+
+                const section = document.createElement('section');
+                section.id = `section-${cat}`;
+                section.className = "mb-8 scroll-mt-24";
                 section.innerHTML = `
-                    <h2 class="text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider pl-1">${catName}</h2>
+                    <h2 class="text-sm font-bold text-gray-400 mb-3 px-1 tracking-widest uppercase flex items-center gap-2">
+                        <span class="w-1 h-4 bg-current rounded-full" style="color: ${getComputedStyleFromCat(cat)}"></span>
+                        ${cat}
+                    </h2>
                     <div class="grid grid-cols-2 gap-4">
-                        ${items.map((item, idx) => `
-                            <div class="grid-item" onclick="handleClick('${catName}', ${idx})">
-                                <span class="text-4xl mb-2">${item.emoji}</span>
-                                <span class="font-bold text-slate-700">${item.zh}</span>
-                                <span class="text-xs text-blue-500 font-medium">${item.en}</span>
+                        ${sortedItemsWithOriginalIndex.map((item) => `
+                            <div class="grid-item ${isEditMode ? 'editing' : ''}" onclick="handleItemClick('${cat}', ${item.originalIdx})">
+                                <button class="delete-btn" onclick="deleteFromCloud(event, '${cat}', ${item.originalIdx})">✕</button>
+                                <span class="text-4xl mb-1">${item.emoji}</span>
+                                <span class="text-lg leading-tight ${colorClass}">${item.text}</span>
+                                <span class="text-[14px] text-blue-700 font-bold leading-tight mt-1">${item.textEn || ''}</span>
                             </div>
                         `).join('')}
+                        ${isEditMode ? `
+                            <div class="grid-item border-2 border-dashed border-gray-300 shadow-none bg-transparent text-gray-400" onclick="openAddModal()">
+                                <span class="text-3xl">+</span>
+                                <span class="text-sm">新增/Add</span>
+                            </div>
+                        ` : ''}
                     </div>
                 `;
                 container.appendChild(section);
-            }
+            });
         }
 
-        // 6. 互動功能
-        window.handleClick = function(cat, idx) {
-            const item = currentData[cat][idx];
+        function getComputedStyleFromCat(cat) {
+            if(cat === "食物飲品") return "#22c55e";
+            if(cat === "日常需求") return "#3b82f6";
+            if(cat === "活動") return "#a855f7";
+            return "#9ca3af";
+        }
+
+        window.scrollToCategory = function(cat) {
+            const el = document.getElementById(`section-${cat}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+        };
+
+        window.handleItemClick = async function(cat, originalIndex) {
+            if (isEditMode) return;
+            const item = currentData[cat][originalIndex];
             
-            // 語音
+            const overlay = document.getElementById('overlay');
+            document.getElementById('overlay-text').innerText = item.text;
+            document.getElementById('overlay-text-en').innerText = item.textEn || '';
+            document.getElementById('overlay-emoji').innerText = item.emoji;
+            overlay.style.display = 'flex';
+
             if ('speechSynthesis' in window) {
-                const utter = new SpeechSynthesisUtterance(item.zh);
-                utter.lang = 'zh-TW';
                 window.speechSynthesis.cancel();
-                window.speechSynthesis.speak(utter);
+                const msgZh = new SpeechSynthesisUtterance(item.text);
+                msgZh.lang = 'zh-HK';
+                if (item.textEn) {
+                    const msgEn = new SpeechSynthesisUtterance(item.textEn);
+                    msgEn.lang = 'en-US';
+                    msgEn.rate = 0.9;
+                    msgZh.onend = () => window.speechSynthesis.speak(msgEn);
+                }
+                window.speechSynthesis.speak(msgZh);
             }
 
-            // 顯示
-            document.getElementById('ov-emoji').innerText = item.emoji;
-            document.getElementById('ov-zh').innerText = item.zh;
-            document.getElementById('ov-en').innerText = item.en;
-            document.getElementById('overlay').style.display = 'flex';
+            // 更新點擊次數並同步到雲端
+            if (user && isSyncing) {
+                const newData = { ...currentData };
+                newData[cat][originalIndex].count = (newData[cat][originalIndex].count || 0) + 1;
+                try { await setDoc(docRef, newData); } catch (e) {}
+            }
         };
 
-        window.toggleEdit = function() {
-            alert("管理功能在雲端同步模式下，請由開發者設定資料結構。");
+        window.toggleEditMode = function() {
+            isEditMode = !isEditMode;
+            const btn = document.getElementById('edit-toggle');
+            btn.innerText = isEditMode ? '✅ 完成/Done' : '⚙️ 管理/Edit';
+            btn.className = isEditMode ? 'bg-blue-600 px-4 py-2 rounded-xl font-bold text-white shadow-lg' : 'bg-gray-100 px-4 py-2 rounded-xl font-medium text-gray-600';
+            renderBoard();
         };
 
-        // 啟動
-        startApp();
+        window.saveToCloud = async function() {
+            const cat = document.getElementById('new-category').value;
+            const emoji = document.getElementById('new-emoji').value || '💬';
+            const text = document.getElementById('new-text').value;
+            const textEn = document.getElementById('new-text-en').value;
+            
+            if (!text || !textEn) {
+                alert("請同時輸入中英文名稱。");
+                return;
+            }
+
+            const newItem = { text, textEn, emoji, count: 0 };
+            const newData = { ...currentData };
+            if (!newData[cat]) newData[cat] = [];
+            newData[cat].push(newItem);
+            
+            await setDoc(docRef, newData);
+            closeAddModal();
+        };
+
+        window.deleteFromCloud = async function(event, cat, originalIndex) {
+            event.stopPropagation();
+            if (confirm(`確定刪除「${currentData[cat][originalIndex].text}」?`)) {
+                const newData = { ...currentData };
+                newData[cat].splice(originalIndex, 1);
+                await setDoc(docRef, newData);
+            }
+        };
+
+        window.hideMessage = () => document.getElementById('overlay').style.display = 'none';
+        window.openAddModal = () => document.getElementById('add-modal').style.display = 'flex';
+        window.closeAddModal = () => {
+            document.getElementById('add-modal').style.display = 'none';
+            document.getElementById('new-text').value = '';
+            document.getElementById('new-text-en').value = '';
+            document.getElementById('new-emoji').value = '';
+        };
+
+        init();
     </script>
 </body>
 </html>
