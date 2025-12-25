@@ -103,14 +103,18 @@
 
     <nav class="nav-sticky mb-6 py-2">
         <div class="grid grid-cols-3 gap-2 text-sm">
-            <button onclick="scrollToCategory('食物飲品')" class="bg-green-500 text-white py-3 rounded-xl font-bold shadow-md active:scale-95 transition-transform">
-                🍎 食物/Food
+            <!-- 增加按鈕高度至 py-6 並提升字體至 text-base -->
+            <button onclick="scrollToCategory('食物飲品')" class="bg-green-500 text-white py-6 rounded-xl text-base font-bold shadow-md active:scale-95 transition-transform flex flex-col items-center justify-center">
+                <span>🍎 食物</span>
+                <span class="text-[10px] opacity-80">Food</span>
             </button>
-            <button onclick="scrollToCategory('日常需求')" class="bg-blue-500 text-white py-3 rounded-xl font-bold shadow-md active:scale-95 transition-transform">
-                🏠 日常/Home
+            <button onclick="scrollToCategory('日常需求')" class="bg-blue-500 text-white py-6 rounded-xl text-base font-bold shadow-md active:scale-95 transition-transform flex flex-col items-center justify-center">
+                <span>🏠 日常</span>
+                <span class="text-[10px] opacity-80">Home</span>
             </button>
-            <button onclick="scrollToCategory('活動')" class="bg-purple-500 text-white py-3 rounded-xl font-bold shadow-md active:scale-95 transition-transform">
-                🏃 活動/Act
+            <button onclick="scrollToCategory('活動')" class="bg-purple-500 text-white py-6 rounded-xl text-base font-bold shadow-md active:scale-95 transition-transform flex flex-col items-center justify-center">
+                <span>🏃 活動</span>
+                <span class="text-[10px] opacity-80">Act</span>
             </button>
         </div>
     </nav>
