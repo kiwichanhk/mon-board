@@ -126,8 +126,9 @@
     <!-- 放大顯示層 -->
     <div id="overlay" onclick="hideMessage()">
         <div id="overlay-emoji" class="text-9xl mb-8"></div>
-        <div id="overlay-text" class="text-6xl font-bold text-black break-words w-full px-6 leading-tight"></div>
-        <div id="overlay-text-en" class="text-4xl font-medium text-gray-500 mt-4 break-words w-full px-6 italic"></div>
+        <div id="overlay-text" class="text-5xl font-bold text-black break-words w-full px-6 leading-tight"></div>
+        <!-- 修改：放大英文並改為藍色 -->
+        <div id="overlay-text-en" class="text-5xl font-bold text-blue-700 mt-6 break-words w-full px-6 italic"></div>
         <div class="mt-20 text-gray-300 text-xl italic">Tap to close / 點擊關閉</div>
     </div>
 
@@ -216,7 +217,6 @@
                 isSyncing = true;
                 if (docSnap.exists()) {
                     currentData = docSnap.data();
-                    // 向後兼容舊資料：如果沒有英文，補上空字串
                     Object.keys(currentData).forEach(cat => {
                         currentData[cat].forEach(item => {
                             if (!item.textEn) item.textEn = "";
@@ -303,7 +303,8 @@
                                 <button class="delete-btn" onclick="deleteFromCloud(event, '${cat}', ${item.originalIdx})">✕</button>
                                 <span class="text-4xl mb-1">${item.emoji}</span>
                                 <span class="text-lg leading-tight ${colorClass}">${item.text}</span>
-                                <span class="text-[11px] text-gray-400 font-normal leading-tight mt-1">${item.textEn || ''}</span>
+                                <!-- 修改：主畫面英文放大並改為藍色 -->
+                                <span class="text-[14px] text-blue-700 font-bold leading-tight mt-1">${item.textEn || ''}</span>
                             </div>
                         `).join('')}
                         ${isEditMode ? `
@@ -340,22 +341,16 @@
             document.getElementById('overlay-emoji').innerText = item.emoji;
             overlay.style.display = 'flex';
 
-            // 語音播報：中文 -> 英文
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
-                
-                // 中文語音
                 const msgZh = new SpeechSynthesisUtterance(item.text);
                 msgZh.lang = 'zh-HK';
-                
-                // 英文語音（中文讀完後讀英文）
                 if (item.textEn) {
                     const msgEn = new SpeechSynthesisUtterance(item.textEn);
                     msgEn.lang = 'en-US';
-                    msgEn.rate = 0.9; // 稍慢一點
+                    msgEn.rate = 0.9;
                     msgZh.onend = () => window.speechSynthesis.speak(msgEn);
                 }
-                
                 window.speechSynthesis.speak(msgZh);
             }
 
