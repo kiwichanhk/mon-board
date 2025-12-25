@@ -226,16 +226,17 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 環境變數
+        // Firebase 初始化
         const firebaseConfig = JSON.parse(__firebase_config);
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'mon-board-main';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'als-board-v1';
 
-        // 設定條件：15分鐘內重複點擊不重複計算
+        // 常數設定
         const ANTI_SPAM_MINUTES = 15;
 
+        // 全域狀態
         let isEditMode = false;
         let categories = ["食物飲品", "日常需求", "活動", "其他"];
         let currentData = {};
@@ -244,68 +245,79 @@
         let isSyncing = false;
         let chartInstance = null;
 
-        // 修正路徑：必須為偶數段且符合規則
-        // 規則: /artifacts/{appId}/public/data/{collectionName}/{documentId}
-        const getDocRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'user_configs', 'main_config');
-        const getLogRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'usage_history', 'logs_v1');
+        // 重要：路徑必須是偶數段 (6段)
+        // /artifacts/{appId}/public/data/{collectionName}/{documentId}
+        const getDocRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'configs', 'main');
+        const getLogRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'logs', 'v1');
 
         async function init() {
             try {
-                document.getElementById('mode-text').innerText = "驗證身分...";
-                
+                const modeText = document.getElementById('mode-text');
+                modeText.innerText = "驗證連線中...";
+
+                // 規則 3: 必須先 await 驗證成功
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
 
+                // 監聽驗證狀態變化
                 onAuthStateChanged(auth, (u) => {
                     user = u;
                     if (user) {
-                        console.log("Authenticated as:", user.uid);
-                        subscribeToData();
-                        subscribeToLogs();
+                        console.log("連線成功:", user.uid);
+                        startSyncing();
+                    } else {
+                        document.getElementById('loading-msg').innerText = "連線已中斷，請重新整理。";
                     }
                 });
             } catch (err) {
                 console.error("Auth Error:", err);
-                document.getElementById('loading-msg').innerText = "驗證失敗，請重新載入。";
+                document.getElementById('loading-msg').innerText = "連線失敗，請檢查網路。";
             }
         }
 
-        function subscribeToData() {
+        function startSyncing() {
             if (!user) return;
-            const ref = getDocRef();
-            onSnapshot(ref, (docSnap) => {
+
+            // 同步配置資料
+            onSnapshot(getDocRef(), (docSnap) => {
                 isSyncing = true;
                 if (docSnap.exists()) {
                     currentData = docSnap.data();
                 } else {
                     currentData = getInitialData();
-                    setDoc(ref, currentData);
+                    setDoc(getDocRef(), currentData);
                 }
-                document.getElementById('sync-status').classList.replace('bg-yellow-500', 'bg-green-500');
-                document.getElementById('mode-text').innerText = "已同步";
-                document.getElementById('stats-toggle').classList.remove('hidden');
+                updateUIOnSync();
                 renderBoard();
             }, (err) => {
-                console.error("Snapshot error (Data):", err);
+                console.error("Data Sync Error:", err);
+                document.getElementById('loading-msg').innerText = "資料讀取失敗 (權限錯誤)";
             });
-        }
 
-        function subscribeToLogs() {
-            if (!user) return;
-            const ref = getLogRef();
-            onSnapshot(ref, (docSnap) => {
+            // 同步日誌資料
+            onSnapshot(getLogRef(), (docSnap) => {
                 if (docSnap.exists()) {
                     logs = docSnap.data().history || [];
                 } else {
-                    setDoc(ref, { history: [] });
+                    setDoc(getLogRef(), { history: [] });
                 }
                 if (isEditMode) renderBoard();
             }, (err) => {
-                console.error("Snapshot error (Logs):", err);
+                console.error("Log Sync Error:", err);
             });
+        }
+
+        function updateUIOnSync() {
+            const statusDot = document.getElementById('sync-status');
+            const modeText = document.getElementById('mode-text');
+            const statsToggle = document.getElementById('stats-toggle');
+            
+            statusDot.classList.replace('bg-yellow-500', 'bg-green-500');
+            modeText.innerText = "雲端同步中";
+            statsToggle.classList.remove('hidden');
         }
 
         function getInitialData() {
@@ -392,6 +404,7 @@
             document.getElementById('overlay-emoji').innerText = item.emoji;
             overlay.style.display = 'flex';
 
+            // 語音播放
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 const msgZh = new SpeechSynthesisUtterance(item.text);
@@ -399,13 +412,14 @@
                 window.speechSynthesis.speak(msgZh);
             }
 
+            // 雲端更新
             if (user && isSyncing) {
                 const lastLog = logs.find(l => l.label === item.text);
                 const isDuplicate = lastLog && (now - lastLog.t) < (ANTI_SPAM_MINUTES * 60 * 1000);
 
                 if (isDuplicate) return; 
 
-                const newData = { ...currentData };
+                const newData = JSON.parse(JSON.stringify(currentData));
                 newData[cat][originalIndex].count = (newData[cat][originalIndex].count || 0) + 1;
                 
                 const newLog = { t: now, label: item.text, cat: cat };
@@ -487,6 +501,7 @@
                     }]
                 },
                 options: {
+                    responsive: true,
                     plugins: { legend: { display: false } },
                     scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
                 }
@@ -513,6 +528,7 @@
         window.openAddModal = () => document.getElementById('add-modal').style.display = 'flex';
         window.closeAddModal = () => document.getElementById('add-modal').style.display = 'none';
 
+        // 啟動程式
         init();
     </script>
 </body>
