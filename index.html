@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>日常溝通板 - 正式版</title>
+    <title>日常溝通板 - 中英對照版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -25,6 +25,8 @@
             position: relative;
             background: white;
             transition: all 0.2s;
+            padding: 10px;
+            text-align: center;
         }
         .grid-item:active:not(.editing) {
             transform: scale(0.92);
@@ -54,18 +56,7 @@
             z-index: 10;
             border: 2px solid white;
         }
-        .count-badge {
-            position: absolute;
-            bottom: 8px;
-            right: 8px;
-            background: #f1f5f9;
-            color: #64748b;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 99px;
-            display: none;
-        }
-        .editing .delete-btn, .editing .count-badge {
+        .editing .delete-btn {
             display: flex;
         }
         .editing {
@@ -99,27 +90,27 @@
 
     <header class="mb-4 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm">
         <div>
-            <h1 class="text-xl font-bold text-gray-800">雲端溝通輔助</h1>
+            <h1 class="text-xl font-bold text-gray-800">雲端溝通輔助 (Bilingual)</h1>
             <div class="flex items-center gap-2">
                 <span id="sync-status" class="w-2 h-2 rounded-full bg-yellow-500"></span>
-                <p id="mode-text" class="text-xs text-gray-500">準備中...</p>
+                <p id="mode-text" class="text-xs text-gray-500">初始化中...</p>
             </div>
         </div>
         <button id="edit-toggle" onclick="toggleEditMode()" class="bg-gray-100 px-4 py-2 rounded-xl font-medium text-gray-600">
-            ⚙️ 管理
+            ⚙️ 管理 / Edit
         </button>
     </header>
 
     <nav class="nav-sticky mb-6 py-2">
-        <div class="grid grid-cols-3 gap-2">
+        <div class="grid grid-cols-3 gap-2 text-sm">
             <button onclick="scrollToCategory('食物飲品')" class="bg-green-500 text-white py-3 rounded-xl font-bold shadow-md active:scale-95 transition-transform">
-                🍎 食物
+                🍎 食物/Food
             </button>
             <button onclick="scrollToCategory('日常需求')" class="bg-blue-500 text-white py-3 rounded-xl font-bold shadow-md active:scale-95 transition-transform">
-                🏠 日常
+                🏠 日常/Home
             </button>
             <button onclick="scrollToCategory('活動')" class="bg-purple-500 text-white py-3 rounded-xl font-bold shadow-md active:scale-95 transition-transform">
-                🏃 活動
+                🏃 活動/Act
             </button>
         </div>
     </nav>
@@ -127,36 +118,44 @@
     <div id="board-container" class="space-y-8">
         <div class="flex flex-col items-center justify-center p-10">
             <div class="loader mb-4"></div>
-            <p class="text-gray-400 text-sm">正在嘗試連線至 Firebase...</p>
+            <p id="loading-msg" class="text-gray-400 text-sm">正在嘗試連線至 Firebase...</p>
+            <button id="bypass-btn" onclick="useOfflineData()" class="mt-4 text-blue-500 underline text-xs hidden">直接載入離線資料</button>
         </div>
     </div>
 
     <!-- 放大顯示層 -->
     <div id="overlay" onclick="hideMessage()">
-        <div id="overlay-emoji" class="text-9xl mb-12"></div>
-        <div id="overlay-text" class="text-7xl font-bold text-black break-words w-full px-6 leading-tight"></div>
-        <div class="mt-24 text-gray-400 text-xl">點擊畫面關閉</div>
+        <div id="overlay-emoji" class="text-9xl mb-8"></div>
+        <div id="overlay-text" class="text-6xl font-bold text-black break-words w-full px-6 leading-tight"></div>
+        <div id="overlay-text-en" class="text-4xl font-medium text-gray-500 mt-4 break-words w-full px-6 italic"></div>
+        <div class="mt-20 text-gray-300 text-xl italic">Tap to close / 點擊關閉</div>
     </div>
 
     <!-- 新增對話框 -->
     <div id="add-modal" class="fixed inset-0 bg-black/60 hidden z-[3000] flex items-center justify-center p-6 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl">
-            <h3 class="text-2xl font-bold mb-6 text-gray-800">新增需求按鈕</h3>
-            <label class="block text-sm font-medium text-gray-700 mb-1">選擇分類</label>
-            <select id="new-category" class="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-xl mb-4 text-lg">
-                <option value="食物飲品">🍎 食物飲品</option>
-                <option value="日常需求">🏠 日常需求</option>
-                <option value="活動">🏃 活動</option>
-                <option value="其他">💬 其他</option>
+        <div class="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl overflow-y-auto max-h-[90vh]">
+            <h3 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">新增按鈕 (New Button)</h3>
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">分類 (Category)</label>
+            <select id="new-category" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-4 text-lg">
+                <option value="食物飲品">🍎 食物飲品 (Food)</option>
+                <option value="日常需求">🏠 日常需求 (Home)</option>
+                <option value="活動">🏃 活動 (Activity)</option>
+                <option value="其他">💬 其他 (Other)</option>
             </select>
+            
             <label class="block text-sm font-medium text-gray-700 mb-1">圖標 (Emoji)</label>
-            <input type="text" id="new-emoji" placeholder="例如: 🍱" class="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-xl mb-4 text-lg">
-            <label class="block text-sm font-medium text-gray-700 mb-1">顯示文字</label>
-            <input type="text" id="new-text" placeholder="例如: 我想吃午飯" class="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-xl mb-6 text-lg">
+            <input type="text" id="new-emoji" placeholder="例如: 🍱" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-4 text-lg">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">中文名稱 (Chinese Text)</label>
+            <input type="text" id="new-text" placeholder="例如: 我想喝水" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-4 text-lg">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">英文翻譯 (English Translation)</label>
+            <input type="text" id="new-text-en" placeholder="e.g. I want some water" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-6 text-lg">
             
             <div class="flex gap-3">
-                <button onclick="closeAddModal()" class="flex-1 bg-gray-100 py-4 rounded-2xl font-bold text-gray-500">取消</button>
-                <button onclick="saveToCloud()" class="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200">確認新增</button>
+                <button onclick="closeAddModal()" class="flex-1 bg-gray-100 py-4 rounded-2xl font-bold text-gray-500">取消/Cancel</button>
+                <button onclick="saveToCloud()" class="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200">儲存/Save</button>
             </div>
         </div>
     </div>
@@ -185,75 +184,90 @@
         let categories = ["食物飲品", "日常需求", "活動", "其他"];
         let currentData = {};
         let user = null;
+        let isSyncing = false;
 
         const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'configs', 'main');
 
-        // 指數退避重試邏輯
-        async function signInWithRetry(retries = 5, delay = 1000) {
-            for (let i = 0; i < retries; i++) {
-                try {
-                    await signInAnonymously(auth);
-                    return;
-                } catch (err) {
-                    if (i === retries - 1) throw err;
-                    await new Promise(res => setTimeout(res, delay));
-                    delay *= 2;
-                }
+        const timeoutTracker = setTimeout(() => {
+            if (!isSyncing) {
+                document.getElementById('bypass-btn').classList.remove('hidden');
+                document.getElementById('loading-msg').innerText = "連線緩慢，可點擊下方載入離線資料";
             }
-        }
+        }, 8000);
 
         async function init() {
             try {
-                document.getElementById('mode-text').innerText = "登入中...";
-                await signInWithRetry();
-                
+                document.getElementById('mode-text').innerText = "驗證身分...";
+                await signInAnonymously(auth);
                 onAuthStateChanged(auth, (u) => {
                     user = u;
-                    if (user) {
-                        document.getElementById('sync-status').classList.replace('bg-yellow-500', 'bg-green-500');
-                        document.getElementById('mode-text').innerText = "雲端已同步";
-                        subscribeToData();
-                    }
+                    if (user) subscribeToData();
                 });
             } catch (err) {
                 console.error("Auth Error:", err);
-                let errorMsg = "連線失敗";
-                if (err.code === 'auth/configuration-not-found') {
-                    errorMsg = "請在 Firebase 啟用匿名登入功能";
-                }
-                document.getElementById('mode-text').innerText = errorMsg;
-                document.getElementById('sync-status').classList.replace('bg-yellow-500', 'bg-red-500');
-                
-                // 離線模擬數據展示（以便在未配置好 Firebase 時仍可看見介面）
-                currentData = {
-                    "食物飲品": [{text: "吃稀飯", emoji: "🥣", count: 0}, {text: "喝水", emoji: "💧", count: 0}],
-                    "日常需求": [{text: "去廁所", emoji: "🚽", count: 0}, {text: "要洗臉", emoji: "🧼", count: 0}],
-                    "活動": [{text: "想散步", emoji: "🚶", count: 0}, {text: "看電視", emoji: "📺", count: 0}],
-                    "其他": [{text: "連線異常，請檢查 Firebase 設定", emoji: "⚠️", count: 0}]
-                };
-                renderBoard();
+                handleConnectionError(err);
             }
         }
 
         function subscribeToData() {
             if (!user) return;
             onSnapshot(docRef, (docSnap) => {
+                clearTimeout(timeoutTracker);
+                isSyncing = true;
                 if (docSnap.exists()) {
                     currentData = docSnap.data();
+                    // 向後兼容舊資料：如果沒有英文，補上空字串
+                    Object.keys(currentData).forEach(cat => {
+                        currentData[cat].forEach(item => {
+                            if (!item.textEn) item.textEn = "";
+                        });
+                    });
                 } else {
-                    currentData = {
-                        "食物飲品": [{text: "吃稀飯", emoji: "🥣", count: 0}, {text: "喝水", emoji: "💧", count: 0}],
-                        "日常需求": [{text: "去廁所", emoji: "🚽", count: 0}, {text: "要洗臉", emoji: "🧼", count: 0}],
-                        "活動": [{text: "想散步", emoji: "🚶", count: 0}, {text: "看電視", emoji: "📺", count: 0}],
-                        "其他": [{text: "謝謝你", emoji: "❤️", count: 0}]
-                    };
+                    currentData = getInitialData();
                     setDoc(docRef, currentData);
                 }
+                document.getElementById('sync-status').classList.replace('bg-yellow-500', 'bg-green-500');
+                document.getElementById('mode-text').innerText = "已同步/Synced";
                 renderBoard();
             }, (error) => {
-                console.error("Firestore Error:", error);
-                document.getElementById('mode-text').innerText = "資料讀取失敗，請檢查 Firestore 規則";
+                handleConnectionError(error);
             });
+        }
+
+        function handleConnectionError(err) {
+            clearTimeout(timeoutTracker);
+            document.getElementById('mode-text').innerText = "連線失敗/Error";
+            document.getElementById('sync-status').classList.replace('bg-yellow-500', 'bg-red-500');
+            useOfflineData();
+        }
+
+        window.useOfflineData = function() {
+            clearTimeout(timeoutTracker);
+            currentData = getInitialData();
+            document.getElementById('mode-text').innerText = "離線模式/Offline";
+            renderBoard();
+        };
+
+        function getInitialData() {
+            return {
+                "食物飲品": [
+                    {text: "吃稀飯", textEn: "Eat Porridge", emoji: "🥣", count: 0}, 
+                    {text: "喝水", textEn: "Drink Water", emoji: "💧", count: 0}
+                ],
+                "日常需求": [
+                    {text: "去廁所", textEn: "Go to Toilet", emoji: "🚽", count: 0}, 
+                    {text: "要洗臉", textEn: "Wash Face", emoji: "🧼", count: 0},
+                    {text: "要翻身", textEn: "Turn Over", emoji: "🛌", count: 0}
+                ],
+                "活動": [
+                    {text: "想散步", textEn: "Go for walk", emoji: "🚶", count: 0}, 
+                    {text: "看電視", textEn: "Watch TV", emoji: "📺", count: 0}
+                ],
+                "其他": [
+                    {text: "謝謝你", textEn: "Thank you", emoji: "❤️", count: 0},
+                    {text: "不舒服", textEn: "Uncomfortable", emoji: "⚠️", count: 0}
+                ]
+            };
         }
 
         window.renderBoard = function() {
@@ -268,30 +282,34 @@
                 sortedItemsWithOriginalIndex.sort((a, b) => (b.count || 0) - (a.count || 0));
 
                 let colorClass = "text-blue-600";
-                if(cat === "活動") colorClass = "text-purple-600";
-                if(cat === "食物飲品") colorClass = "text-green-600";
+                let catEn = "Other";
+                if(cat === "活動") { colorClass = "text-purple-600"; catEn = "Activity"; }
+                if(cat === "食物飲品") { colorClass = "text-green-600"; catEn = "Food/Drink"; }
+                if(cat === "日常需求") { colorClass = "text-blue-600"; catEn = "Needs"; }
 
                 const section = document.createElement('section');
                 section.id = `section-${cat}`;
                 section.className = "mb-8 scroll-mt-24";
                 section.innerHTML = `
-                    <h2 class="text-sm font-bold text-gray-400 mb-3 px-1 tracking-widest uppercase flex items-center gap-2">
-                        <span class="w-1 h-4 bg-current rounded-full" style="color: ${getComputedStyleFromCat(cat)}"></span>
-                        ${cat}
+                    <h2 class="text-sm font-bold text-gray-400 mb-3 px-1 tracking-widest uppercase flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-1 h-4 bg-current rounded-full" style="color: ${getComputedStyleFromCat(cat)}"></span>
+                            ${cat} <span class="text-[10px] opacity-60 ml-1">/ ${catEn}</span>
+                        </div>
                     </h2>
                     <div class="grid grid-cols-2 gap-4">
                         ${sortedItemsWithOriginalIndex.map((item) => `
                             <div class="grid-item ${isEditMode ? 'editing' : ''}" onclick="handleItemClick('${cat}', ${item.originalIdx})">
                                 <button class="delete-btn" onclick="deleteFromCloud(event, '${cat}', ${item.originalIdx})">✕</button>
-                                <span class="text-4xl mb-2">${item.emoji}</span>
-                                <span class="text-lg ${colorClass}">${item.text}</span>
-                                <span class="count-badge">點擊: ${item.count || 0}</span>
+                                <span class="text-4xl mb-1">${item.emoji}</span>
+                                <span class="text-lg leading-tight ${colorClass}">${item.text}</span>
+                                <span class="text-[11px] text-gray-400 font-normal leading-tight mt-1">${item.textEn || ''}</span>
                             </div>
                         `).join('')}
                         ${isEditMode ? `
                             <div class="grid-item border-2 border-dashed border-gray-300 shadow-none bg-transparent text-gray-400" onclick="openAddModal()">
                                 <span class="text-3xl">+</span>
-                                <span class="text-sm">新增內容</span>
+                                <span class="text-sm">新增/Add</span>
                             </div>
                         ` : ''}
                     </div>
@@ -318,46 +336,61 @@
             
             const overlay = document.getElementById('overlay');
             document.getElementById('overlay-text').innerText = item.text;
+            document.getElementById('overlay-text-en').innerText = item.textEn || '';
             document.getElementById('overlay-emoji').innerText = item.emoji;
             overlay.style.display = 'flex';
 
+            // 語音播報：中文 -> 英文
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
-                const msg = new SpeechSynthesisUtterance(item.text);
-                msg.lang = 'zh-HK';
-                window.speechSynthesis.speak(msg);
+                
+                // 中文語音
+                const msgZh = new SpeechSynthesisUtterance(item.text);
+                msgZh.lang = 'zh-HK';
+                
+                // 英文語音（中文讀完後讀英文）
+                if (item.textEn) {
+                    const msgEn = new SpeechSynthesisUtterance(item.textEn);
+                    msgEn.lang = 'en-US';
+                    msgEn.rate = 0.9; // 稍慢一點
+                    msgZh.onend = () => window.speechSynthesis.speak(msgEn);
+                }
+                
+                window.speechSynthesis.speak(msgZh);
             }
 
-            if (user) {
+            if (user && isSyncing) {
                 const newData = { ...currentData };
                 newData[cat][originalIndex].count = (newData[cat][originalIndex].count || 0) + 1;
-                try {
-                    await setDoc(docRef, newData);
-                } catch (e) {
-                    console.error("Save click failed", e);
-                }
+                try { await setDoc(docRef, newData); } catch (e) {}
             }
         };
 
         window.toggleEditMode = function() {
             isEditMode = !isEditMode;
             const btn = document.getElementById('edit-toggle');
-            btn.innerText = isEditMode ? '✅ 完成' : '⚙️ 管理';
-            btn.className = isEditMode ? 'bg-blue-600 px-4 py-2 rounded-xl font-bold text-white' : 'bg-gray-100 px-4 py-2 rounded-xl font-medium text-gray-600';
+            btn.innerText = isEditMode ? '✅ 完成/Done' : '⚙️ 管理/Edit';
+            btn.className = isEditMode ? 'bg-blue-600 px-4 py-2 rounded-xl font-bold text-white shadow-lg' : 'bg-gray-100 px-4 py-2 rounded-xl font-medium text-gray-600';
             renderBoard();
         };
 
         window.saveToCloud = async function() {
-            if (!user) {
-                alert("未連線至資料庫，無法新增。請檢查 Firebase 配置。");
-                return;
-            }
             const cat = document.getElementById('new-category').value;
             const emoji = document.getElementById('new-emoji').value || '💬';
             const text = document.getElementById('new-text').value;
-            if (!text) return;
+            const textEn = document.getElementById('new-text-en').value;
+            
+            if (!text || !textEn) {
+                alert("請同時輸入中文與英文名稱。/ Please enter both languages.");
+                return;
+            }
 
-            const newItem = { text, emoji, count: 0 };
+            if (!user || !isSyncing) {
+                alert("目前為離線模式，無法永久儲存。");
+                return;
+            }
+
+            const newItem = { text, textEn, emoji, count: 0 };
             const newData = { ...currentData };
             if (!newData[cat]) newData[cat] = [];
             newData[cat].push(newItem);
@@ -368,8 +401,8 @@
 
         window.deleteFromCloud = async function(event, cat, originalIndex) {
             event.stopPropagation();
-            if (!user) return;
-            if (confirm(`確定刪除「${currentData[cat][originalIndex].text}」嗎？`)) {
+            if (!user || !isSyncing) return;
+            if (confirm(`確定刪除/Delete 「${currentData[cat][originalIndex].text}」?`)) {
                 const newData = { ...currentData };
                 newData[cat].splice(originalIndex, 1);
                 await setDoc(docRef, newData);
@@ -381,6 +414,7 @@
         window.closeAddModal = () => {
             document.getElementById('add-modal').style.display = 'none';
             document.getElementById('new-text').value = '';
+            document.getElementById('new-text-en').value = '';
             document.getElementById('new-emoji').value = '';
         };
 
