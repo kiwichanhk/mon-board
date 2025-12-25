@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>日常溝通板 - 中英對照版</title>
+    <title>日常溝通板 - 數據分析版</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Chart.js 用於顯示統計圖表 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -56,7 +58,21 @@
             z-index: 10;
             border: 2px solid white;
         }
-        .editing .delete-btn {
+        .usage-badge {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: #e2e8f0;
+            color: #64748b;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 999px;
+            display: none;
+            flex-direction: column;
+            line-height: 1.1;
+            text-align: right;
+        }
+        .editing .delete-btn, .editing .usage-badge {
             display: flex;
         }
         .editing {
@@ -84,6 +100,16 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        #stats-panel {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0; top: 0;
+            background: #f8fafc;
+            z-index: 4000;
+            overflow-y: auto;
+            padding: 20px;
+        }
     </style>
 </head>
 <body class="p-4">
@@ -96,21 +122,30 @@
                 <p id="mode-text" class="text-xs text-gray-500">初始化中...</p>
             </div>
         </div>
-        <button id="edit-toggle" onclick="toggleEditMode()" class="bg-gray-100 px-4 py-2 rounded-xl font-medium text-gray-600">
-            ⚙️ 管理 / Edit
-        </button>
+        <div class="flex gap-2">
+            <button id="stats-toggle" onclick="toggleStats()" class="bg-blue-50 p-2 rounded-xl text-blue-600 hidden">
+                📊 統計
+            </button>
+            <button id="edit-toggle" onclick="toggleEditMode()" class="bg-gray-100 px-4 py-2 rounded-xl font-medium text-gray-600">
+                ⚙️ 管理
+            </button>
+        </div>
     </header>
 
+    <!-- 頂層分類導覽列 (中英雙語對照) -->
     <nav class="nav-sticky mb-6 py-2">
         <div class="grid grid-cols-3 gap-2 text-sm">
-            <button onclick="scrollToCategory('食物飲品')" class="bg-green-500 text-white py-6 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center">
-                🍎 食物飲品
+            <button onclick="scrollToCategory('食物飲品')" class="bg-green-500 text-white py-4 rounded-xl shadow-md active:scale-95 transition-transform flex flex-col items-center justify-center">
+                <span class="text-lg font-bold">🍎 食物飲品</span>
+                <span class="text-[10px] opacity-80 uppercase tracking-tighter">Food & Drink</span>
             </button>
-            <button onclick="scrollToCategory('日常需求')" class="bg-blue-500 text-white py-6 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center">
-                🏠 日常需求
+            <button onclick="scrollToCategory('日常需求')" class="bg-blue-500 text-white py-4 rounded-xl shadow-md active:scale-95 transition-transform flex flex-col items-center justify-center">
+                <span class="text-lg font-bold">🏠 日常需求</span>
+                <span class="text-[10px] opacity-80 uppercase tracking-tighter">Daily Needs</span>
             </button>
-            <button onclick="scrollToCategory('活動')" class="bg-purple-500 text-white py-6 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center">
-                🏃 活動項目
+            <button onclick="scrollToCategory('活動')" class="bg-purple-500 text-white py-4 rounded-xl shadow-md active:scale-95 transition-transform flex flex-col items-center justify-center">
+                <span class="text-lg font-bold">🏃 活動項目</span>
+                <span class="text-[10px] opacity-80 uppercase tracking-tighter">Activities</span>
             </button>
         </div>
     </nav>
@@ -118,8 +153,34 @@
     <div id="board-container" class="space-y-8">
         <div class="flex flex-col items-center justify-center p-10">
             <div class="loader mb-4"></div>
-            <p id="loading-msg" class="text-gray-400 text-sm">正在嘗試連線至 Firebase...</p>
-            <button id="bypass-btn" onclick="useOfflineData()" class="mt-4 text-blue-500 underline text-xs hidden">直接載入離線資料</button>
+            <p id="loading-msg" class="text-gray-400 text-sm">正在嘗試連線至雲端資料庫...</p>
+        </div>
+    </div>
+
+    <!-- 數據統計面板 -->
+    <div id="stats-panel">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">需求統計分析</h2>
+            <button onclick="toggleStats()" class="bg-gray-200 p-2 rounded-full w-10 h-10 flex items-center justify-center font-bold text-gray-600">✕</button>
+        </div>
+        
+        <div class="bg-white p-4 rounded-3xl shadow-sm mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-gray-600 italic">今日有效需求 (Top 5)</h3>
+                <span class="text-[10px] text-gray-400">已過濾 15 分鐘內重複項</span>
+            </div>
+            <div id="top-needs-list" class="space-y-3">
+                <!-- 由 JS 動態生成 -->
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-3xl shadow-sm mb-6">
+            <h3 class="font-bold text-gray-600 mb-4 italic">今日 24 小時分佈</h3>
+            <canvas id="timeChart"></canvas>
+        </div>
+
+        <div class="text-center text-xs text-gray-400 p-4">
+            數據顯示最近 100 筆有效記錄
         </div>
     </div>
 
@@ -128,146 +189,146 @@
         <div id="overlay-emoji" class="text-9xl mb-8"></div>
         <div id="overlay-text" class="text-5xl font-bold text-black break-words w-full px-6 leading-tight"></div>
         <div id="overlay-text-en" class="text-5xl font-bold text-blue-700 mt-6 break-words w-full px-6 italic"></div>
-        <div class="mt-20 text-gray-300 text-xl italic">Tap to close / 點擊關閉</div>
+        <div class="mt-20 text-gray-300 text-xl italic">點擊關閉</div>
     </div>
 
     <!-- 新增對話框 -->
     <div id="add-modal" class="fixed inset-0 bg-black/60 hidden z-[3000] flex items-center justify-center p-6 backdrop-blur-sm">
         <div class="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl overflow-y-auto max-h-[90vh]">
-            <h3 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">新增按鈕 (New Button)</h3>
+            <h3 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">新增按鈕</h3>
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">分類 (Category)</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">分類</label>
             <select id="new-category" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-4 text-lg">
-                <option value="食物飲品">🍎 食物飲品 (Food)</option>
-                <option value="日常需求">🏠 日常需求 (Home)</option>
-                <option value="活動">🏃 活動 (Activity)</option>
-                <option value="其他">💬 其他 (Other)</option>
+                <option value="食物飲品">🍎 食物飲品</option>
+                <option value="日常需求">🏠 日常需求</option>
+                <option value="活動">🏃 活動</option>
+                <option value="其他">💬 其他</option>
             </select>
             
             <label class="block text-sm font-medium text-gray-700 mb-1">圖標 (Emoji)</label>
             <input type="text" id="new-emoji" placeholder="例如: 🍱" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-4 text-lg">
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">中文名稱 (Chinese Text)</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">中文名稱</label>
             <input type="text" id="new-text" placeholder="例如: 我想喝水" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-4 text-lg">
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">英文翻譯 (English Translation)</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">英文翻譯</label>
             <input type="text" id="new-text-en" placeholder="e.g. I want some water" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-6 text-lg">
             
             <div class="flex gap-3">
-                <button onclick="closeAddModal()" class="flex-1 bg-gray-100 py-4 rounded-2xl font-bold text-gray-500">取消/Cancel</button>
-                <button onclick="saveToCloud()" class="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200">儲存/Save</button>
+                <button onclick="closeAddModal()" class="flex-1 bg-gray-100 py-4 rounded-2xl font-bold text-gray-500">取消</button>
+                <button id="save-btn" class="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200">儲存</button>
             </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBE6-h-OVrfjTF1fgRCnJ6FjuCADjWcH8Y",
-            authDomain: "mon-board.firebaseapp.com",
-            projectId: "mon-board",
-            storageBucket: "mon-board.firebasestorage.app",
-            messagingSenderId: "1086188282386",
-            appId: "1:1086188282386:web:61f0b632c8d29aff7beecb",
-            measurementId: "G-FB4B7GG7SX"
-        };
-
+        // 環境變數
+        const firebaseConfig = JSON.parse(__firebase_config);
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = "mon-board-main";
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'mon-board-main';
+
+        // 設定條件：15分鐘內重複點擊不重複計算
+        const ANTI_SPAM_MINUTES = 15;
 
         let isEditMode = false;
         let categories = ["食物飲品", "日常需求", "活動", "其他"];
         let currentData = {};
+        let logs = []; 
         let user = null;
         let isSyncing = false;
+        let chartInstance = null;
 
-        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'configs', 'main');
-
-        const timeoutTracker = setTimeout(() => {
-            if (!isSyncing) {
-                document.getElementById('bypass-btn').classList.remove('hidden');
-                document.getElementById('loading-msg').innerText = "連線緩慢，可點擊下方載入離線資料";
-            }
-        }, 8000);
+        // 修正路徑：必須為偶數段且符合規則
+        // 規則: /artifacts/{appId}/public/data/{collectionName}/{documentId}
+        const getDocRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'user_configs', 'main_config');
+        const getLogRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'usage_history', 'logs_v1');
 
         async function init() {
             try {
                 document.getElementById('mode-text').innerText = "驗證身分...";
-                await signInAnonymously(auth);
+                
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
                 onAuthStateChanged(auth, (u) => {
                     user = u;
-                    if (user) subscribeToData();
+                    if (user) {
+                        console.log("Authenticated as:", user.uid);
+                        subscribeToData();
+                        subscribeToLogs();
+                    }
                 });
             } catch (err) {
                 console.error("Auth Error:", err);
-                handleConnectionError(err);
+                document.getElementById('loading-msg').innerText = "驗證失敗，請重新載入。";
             }
         }
 
         function subscribeToData() {
             if (!user) return;
-            onSnapshot(docRef, (docSnap) => {
-                clearTimeout(timeoutTracker);
+            const ref = getDocRef();
+            onSnapshot(ref, (docSnap) => {
                 isSyncing = true;
                 if (docSnap.exists()) {
                     currentData = docSnap.data();
-                    Object.keys(currentData).forEach(cat => {
-                        currentData[cat].forEach(item => {
-                            if (!item.textEn) item.textEn = "";
-                            if (item.count === undefined) item.count = 0;
-                        });
-                    });
                 } else {
                     currentData = getInitialData();
-                    setDoc(docRef, currentData);
+                    setDoc(ref, currentData);
                 }
                 document.getElementById('sync-status').classList.replace('bg-yellow-500', 'bg-green-500');
-                document.getElementById('mode-text').innerText = "已同步/Synced";
+                document.getElementById('mode-text').innerText = "已同步";
+                document.getElementById('stats-toggle').classList.remove('hidden');
                 renderBoard();
-            }, (error) => {
-                handleConnectionError(error);
+            }, (err) => {
+                console.error("Snapshot error (Data):", err);
             });
         }
 
-        function handleConnectionError(err) {
-            clearTimeout(timeoutTracker);
-            document.getElementById('mode-text').innerText = "連線失敗/Error";
-            document.getElementById('sync-status').classList.replace('bg-yellow-500', 'bg-red-500');
-            useOfflineData();
+        function subscribeToLogs() {
+            if (!user) return;
+            const ref = getLogRef();
+            onSnapshot(ref, (docSnap) => {
+                if (docSnap.exists()) {
+                    logs = docSnap.data().history || [];
+                } else {
+                    setDoc(ref, { history: [] });
+                }
+                if (isEditMode) renderBoard();
+            }, (err) => {
+                console.error("Snapshot error (Logs):", err);
+            });
         }
-
-        window.useOfflineData = function() {
-            clearTimeout(timeoutTracker);
-            currentData = getInitialData();
-            document.getElementById('mode-text').innerText = "離線模式/Offline";
-            renderBoard();
-        };
 
         function getInitialData() {
             return {
                 "食物飲品": [
-                    {text: "吃稀飯", textEn: "Eat Porridge", emoji: "🥣", count: 0}, 
-                    {text: "喝水", textEn: "Drink Water", emoji: "💧", count: 0}
+                    { emoji: "💧", text: "我想喝水", textEn: "I want water", count: 0 },
+                    { emoji: "🥣", text: "我餓了", textEn: "I am hungry", count: 0 }
                 ],
                 "日常需求": [
-                    {text: "去廁所", textEn: "Go to Toilet", emoji: "🚽", count: 0}, 
-                    {text: "要洗臉", textEn: "Wash Face", emoji: "🧼", count: 0},
-                    {text: "要翻身", textEn: "Turn Over", emoji: "🛌", count: 0}
+                    { emoji: "🚻", text: "上廁所", textEn: "Toilet", count: 0 },
+                    { emoji: "🛏️", text: "想睡覺", textEn: "Sleep", count: 0 }
                 ],
                 "活動": [
-                    {text: "想散步", textEn: "Go for walk", emoji: "🚶", count: 0}, 
-                    {text: "看電視", textEn: "Watch TV", emoji: "📺", count: 0}
+                    { emoji: "🪟", text: "開窗戶", textEn: "Open window", count: 0 },
+                    { emoji: "🛋️", text: "去客廳", textEn: "Living room", count: 0 }
                 ],
-                "其他": [
-                    {text: "謝謝你", textEn: "Thank you", emoji: "❤️", count: 0},
-                    {text: "不舒服", textEn: "Uncomfortable", emoji: "⚠️", count: 0}
-                ]
+                "其他": []
             };
+        }
+
+        function getTodayCountForItem(label) {
+            const today = new Date().toDateString();
+            return logs.filter(log => log.label === label && new Date(log.t).toDateString() === today).length;
         }
 
         window.renderBoard = function() {
@@ -278,14 +339,12 @@
                 let items = currentData[cat] || [];
                 if (items.length === 0 && !isEditMode) return;
 
-                // 修復：確保根據 count 排序，點擊次數多的排在前面
-                const sortedItemsWithOriginalIndex = items.map((item, originalIdx) => ({...item, originalIdx}));
-                sortedItemsWithOriginalIndex.sort((a, b) => (b.count || 0) - (a.count || 0));
+                const sortedItems = items.map((item, originalIdx) => ({...item, originalIdx}))
+                                         .sort((a, b) => (b.count || 0) - (a.count || 0));
 
                 let colorClass = "text-blue-600";
                 if(cat === "活動") colorClass = "text-purple-600";
                 if(cat === "食物飲品") colorClass = "text-green-600";
-                if(cat === "日常需求") colorClass = "text-blue-600";
 
                 const section = document.createElement('section');
                 section.id = `section-${cat}`;
@@ -296,18 +355,24 @@
                         ${cat}
                     </h2>
                     <div class="grid grid-cols-2 gap-4">
-                        ${sortedItemsWithOriginalIndex.map((item) => `
+                        ${sortedItems.map((item) => {
+                            const todayCount = getTodayCountForItem(item.text);
+                            return `
                             <div class="grid-item ${isEditMode ? 'editing' : ''}" onclick="handleItemClick('${cat}', ${item.originalIdx})">
                                 <button class="delete-btn" onclick="deleteFromCloud(event, '${cat}', ${item.originalIdx})">✕</button>
+                                <div class="usage-badge">
+                                    <span>今日: ${todayCount}</span>
+                                    <span>累計: ${item.count || 0}</span>
+                                </div>
                                 <span class="text-4xl mb-1">${item.emoji}</span>
                                 <span class="text-lg leading-tight ${colorClass}">${item.text}</span>
                                 <span class="text-[14px] text-blue-700 font-bold leading-tight mt-1">${item.textEn || ''}</span>
                             </div>
-                        `).join('')}
+                        `}).join('')}
                         ${isEditMode ? `
                             <div class="grid-item border-2 border-dashed border-gray-300 shadow-none bg-transparent text-gray-400" onclick="openAddModal()">
                                 <span class="text-3xl">+</span>
-                                <span class="text-sm">新增/Add</span>
+                                <span class="text-sm">新增</span>
                             </div>
                         ` : ''}
                     </div>
@@ -316,22 +381,11 @@
             });
         }
 
-        function getComputedStyleFromCat(cat) {
-            if(cat === "食物飲品") return "#22c55e";
-            if(cat === "日常需求") return "#3b82f6";
-            if(cat === "活動") return "#a855f7";
-            return "#9ca3af";
-        }
-
-        window.scrollToCategory = function(cat) {
-            const el = document.getElementById(`section-${cat}`);
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-        };
-
         window.handleItemClick = async function(cat, originalIndex) {
             if (isEditMode) return;
             const item = currentData[cat][originalIndex];
-            
+            const now = new Date().getTime();
+
             const overlay = document.getElementById('overlay');
             document.getElementById('overlay-text').innerText = item.text;
             document.getElementById('overlay-text-en').innerText = item.textEn || '';
@@ -342,29 +396,35 @@
                 window.speechSynthesis.cancel();
                 const msgZh = new SpeechSynthesisUtterance(item.text);
                 msgZh.lang = 'zh-HK';
-                if (item.textEn) {
-                    const msgEn = new SpeechSynthesisUtterance(item.textEn);
-                    msgEn.lang = 'en-US';
-                    msgEn.rate = 0.9;
-                    msgZh.onend = () => window.speechSynthesis.speak(msgEn);
-                }
                 window.speechSynthesis.speak(msgZh);
             }
 
-            // 更新點擊次數並同步到雲端
             if (user && isSyncing) {
+                const lastLog = logs.find(l => l.label === item.text);
+                const isDuplicate = lastLog && (now - lastLog.t) < (ANTI_SPAM_MINUTES * 60 * 1000);
+
+                if (isDuplicate) return; 
+
                 const newData = { ...currentData };
                 newData[cat][originalIndex].count = (newData[cat][originalIndex].count || 0) + 1;
-                try { await setDoc(docRef, newData); } catch (e) {}
+                
+                const newLog = { t: now, label: item.text, cat: cat };
+                
+                try {
+                    await setDoc(getDocRef(), newData);
+                    let updatedLogs = [newLog, ...logs].slice(0, 100);
+                    await setDoc(getLogRef(), { history: updatedLogs });
+                } catch (e) {
+                    console.error("Error updating cloud:", e);
+                }
             }
         };
 
-        window.toggleEditMode = function() {
-            isEditMode = !isEditMode;
-            const btn = document.getElementById('edit-toggle');
-            btn.innerText = isEditMode ? '✅ 完成/Done' : '⚙️ 管理/Edit';
-            btn.className = isEditMode ? 'bg-blue-600 px-4 py-2 rounded-xl font-bold text-white shadow-lg' : 'bg-gray-100 px-4 py-2 rounded-xl font-medium text-gray-600';
-            renderBoard();
+        window.deleteFromCloud = async function(e, cat, idx) {
+            e.stopPropagation();
+            if(!confirm("確定要刪除嗎？")) return;
+            currentData[cat].splice(idx, 1);
+            await setDoc(getDocRef(), currentData);
         };
 
         window.saveToCloud = async function() {
@@ -372,38 +432,86 @@
             const emoji = document.getElementById('new-emoji').value || '💬';
             const text = document.getElementById('new-text').value;
             const textEn = document.getElementById('new-text-en').value;
-            
-            if (!text || !textEn) {
-                alert("請同時輸入中英文名稱。");
-                return;
-            }
 
-            const newItem = { text, textEn, emoji, count: 0 };
-            const newData = { ...currentData };
-            if (!newData[cat]) newData[cat] = [];
-            newData[cat].push(newItem);
-            
-            await setDoc(docRef, newData);
+            if(!text) return;
+            if(!currentData[cat]) currentData[cat] = [];
+            currentData[cat].push({ emoji, text, textEn, count: 0 });
+            await setDoc(getDocRef(), currentData);
             closeAddModal();
         };
 
-        window.deleteFromCloud = async function(event, cat, originalIndex) {
-            event.stopPropagation();
-            if (confirm(`確定刪除「${currentData[cat][originalIndex].text}」?`)) {
-                const newData = { ...currentData };
-                newData[cat].splice(originalIndex, 1);
-                await setDoc(docRef, newData);
-            }
+        document.getElementById('save-btn').onclick = saveToCloud;
+
+        window.toggleStats = function() {
+            const panel = document.getElementById('stats-panel');
+            const isVisible = panel.style.display === 'block';
+            panel.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible) updateStatsUI();
         };
 
+        function updateStatsUI() {
+            const today = new Date().toDateString();
+            const todayLogs = logs.filter(l => new Date(l.t).toDateString() === today);
+
+            const topList = document.getElementById('top-needs-list');
+            const counts = {};
+            todayLogs.forEach(log => {
+                counts[log.label] = (counts[log.label] || 0) + 1;
+            });
+            
+            const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+            topList.innerHTML = sorted.length ? sorted.map(([label, count]) => `
+                <div class="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
+                    <span class="font-bold text-gray-700">${label}</span>
+                    <span class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-xs font-bold">今日 ${count} 次</span>
+                </div>
+            `).join('') : '<p class="text-gray-400 text-sm text-center">今日尚無有效記錄</p>';
+
+            const hourCounts = new Array(24).fill(0);
+            todayLogs.forEach(log => {
+                const hour = new Date(log.t).getHours();
+                hourCounts[hour]++;
+            });
+
+            if (chartInstance) chartInstance.destroy();
+            const ctx = document.getElementById('timeChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${i}h`),
+                    datasets: [{
+                        label: '今日有效需求',
+                        data: hourCounts,
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+        }
+
+        window.toggleEditMode = function() {
+            isEditMode = !isEditMode;
+            const btn = document.getElementById('edit-toggle');
+            btn.innerText = isEditMode ? '✅ 完成' : '⚙️ 管理';
+            btn.className = isEditMode ? 'bg-blue-600 px-4 py-2 rounded-xl font-bold text-white shadow-lg' : 'bg-gray-100 px-4 py-2 rounded-xl font-medium text-gray-600';
+            renderBoard();
+        };
+
+        function getComputedStyleFromCat(cat) {
+            if(cat === "食物飲品") return "#22c55e";
+            if(cat === "日常需求") return "#3b82f6";
+            if(cat === "活動") return "#a855f7";
+            return "#9ca3af";
+        }
+
+        window.scrollToCategory = (cat) => document.getElementById(`section-${cat}`)?.scrollIntoView({ behavior: 'smooth' });
         window.hideMessage = () => document.getElementById('overlay').style.display = 'none';
         window.openAddModal = () => document.getElementById('add-modal').style.display = 'flex';
-        window.closeAddModal = () => {
-            document.getElementById('add-modal').style.display = 'none';
-            document.getElementById('new-text').value = '';
-            document.getElementById('new-text-en').value = '';
-            document.getElementById('new-emoji').value = '';
-        };
+        window.closeAddModal = () => document.getElementById('add-modal').style.display = 'none';
 
         init();
     </script>
