@@ -90,7 +90,7 @@
 
     <header class="mb-4 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm">
         <div>
-            <h1 class="text-xl font-bold text-gray-800">溝通輔助 </h1>
+            <h1 class="text-xl font-bold text-gray-800">雲端溝通輔助 (Bilingual)</h1>
             <div class="flex items-center gap-2">
                 <span id="sync-status" class="w-2 h-2 rounded-full bg-yellow-500"></span>
                 <p id="mode-text" class="text-xs text-gray-500">初始化中...</p>
@@ -103,7 +103,6 @@
 
     <nav class="nav-sticky mb-6 py-2">
         <div class="grid grid-cols-3 gap-2 text-sm">
-            <!-- 修改：移除英文，保留純中文按鈕 -->
             <button onclick="scrollToCategory('食物飲品')" class="bg-green-500 text-white py-6 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center">
                 🍎 食物飲品
             </button>
@@ -220,6 +219,7 @@
                     Object.keys(currentData).forEach(cat => {
                         currentData[cat].forEach(item => {
                             if (!item.textEn) item.textEn = "";
+                            if (item.count === undefined) item.count = 0;
                         });
                     });
                 } else {
@@ -278,24 +278,22 @@
                 let items = currentData[cat] || [];
                 if (items.length === 0 && !isEditMode) return;
 
+                // 修復：確保根據 count 排序，點擊次數多的排在前面
                 const sortedItemsWithOriginalIndex = items.map((item, originalIdx) => ({...item, originalIdx}));
                 sortedItemsWithOriginalIndex.sort((a, b) => (b.count || 0) - (a.count || 0));
 
                 let colorClass = "text-blue-600";
-                let catEn = "Other";
-                if(cat === "活動") { colorClass = "text-purple-600"; catEn = "Activity"; }
-                if(cat === "食物飲品") { colorClass = "text-green-600"; catEn = "Food/Drink"; }
-                if(cat === "日常需求") { colorClass = "text-blue-600"; catEn = "Needs"; }
+                if(cat === "活動") colorClass = "text-purple-600";
+                if(cat === "食物飲品") colorClass = "text-green-600";
+                if(cat === "日常需求") colorClass = "text-blue-600";
 
                 const section = document.createElement('section');
                 section.id = `section-${cat}`;
                 section.className = "mb-8 scroll-mt-24";
                 section.innerHTML = `
-                    <h2 class="text-sm font-bold text-gray-400 mb-3 px-1 tracking-widest uppercase flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="w-1 h-4 bg-current rounded-full" style="color: ${getComputedStyleFromCat(cat)}"></span>
-                            ${cat} <span class="text-[10px] opacity-60 ml-1">/ ${catEn}</span>
-                        </div>
+                    <h2 class="text-sm font-bold text-gray-400 mb-3 px-1 tracking-widest uppercase flex items-center gap-2">
+                        <span class="w-1 h-4 bg-current rounded-full" style="color: ${getComputedStyleFromCat(cat)}"></span>
+                        ${cat}
                     </h2>
                     <div class="grid grid-cols-2 gap-4">
                         ${sortedItemsWithOriginalIndex.map((item) => `
@@ -353,6 +351,7 @@
                 window.speechSynthesis.speak(msgZh);
             }
 
+            // 更新點擊次數並同步到雲端
             if (user && isSyncing) {
                 const newData = { ...currentData };
                 newData[cat][originalIndex].count = (newData[cat][originalIndex].count || 0) + 1;
@@ -375,12 +374,7 @@
             const textEn = document.getElementById('new-text-en').value;
             
             if (!text || !textEn) {
-                alert("請同時輸入中文與英文名稱。/ Please enter both languages.");
-                return;
-            }
-
-            if (!user || !isSyncing) {
-                alert("目前為離線模式，無法永久儲存。");
+                alert("請同時輸入中英文名稱。");
                 return;
             }
 
@@ -395,8 +389,7 @@
 
         window.deleteFromCloud = async function(event, cat, originalIndex) {
             event.stopPropagation();
-            if (!user || !isSyncing) return;
-            if (confirm(`確定刪除/Delete 「${currentData[cat][originalIndex].text}」?`)) {
+            if (confirm(`確定刪除「${currentData[cat][originalIndex].text}」?`)) {
                 const newData = { ...currentData };
                 newData[cat].splice(originalIndex, 1);
                 await setDoc(docRef, newData);
