@@ -109,7 +109,7 @@
     <!-- 頂部標題 -->
     <header class="mb-8 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm">
         <div>
-            <h1 class="text-xl font-bold text-gray-800">照護溝通板</h1>
+            <h1 class="text-xl font-bold text-gray-800">媽媽溝通板</h1>
             <div class="flex items-center gap-2">
                 <span id="sync-status" class="w-2 h-2 rounded-full bg-yellow-500"></span>
                 <p id="mode-text" class="text-xs text-gray-500">初始化中...</p>
@@ -121,7 +121,7 @@
         </div>
     </header>
 
-    <!-- 主內容區 (移除頂部分類導覽) -->
+    <!-- 主內容區 -->
     <div id="board-container" class="space-y-8">
         <div class="flex flex-col items-center justify-center p-20">
             <div class="loader mb-4"></div>
@@ -129,12 +129,12 @@
         </div>
     </div>
 
-    <!-- 底部分類導覽 (保留底部導覽供快速跳轉) -->
+    <!-- 底部分類導覽 -->
     <div class="bottom-nav">
         <div class="grid grid-cols-3 gap-2">
-            <button onclick="scrollToCategory('食物飲品')" class="bg-green-500 text-white py-4 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform">🍎 食物</button>
-            <button onclick="scrollToCategory('日常需求')" class="bg-blue-500 text-white py-4 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform">🏠 需求</button>
-            <button onclick="scrollToCategory('活動')" class="bg-purple-500 text-white py-4 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform">🏃 活動</button>
+            <button onclick="scrollToCategory('食物飲品')" class="bg-green-500 text-white py-4 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform">🍎 食物 Food</button>
+            <button onclick="scrollToCategory('日常需求')" class="bg-blue-500 text-white py-4 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform">🏠 需求 Need</button>
+            <button onclick="scrollToCategory('活動')" class="bg-purple-500 text-white py-4 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform">🏃 活動 Action</button>
         </div>
     </div>
 
@@ -168,7 +168,6 @@
     <div id="overlay" onclick="hideMessage()">
         <div id="overlay-emoji" class="text-9xl mb-8 mt-12"></div>
         <div id="overlay-text" class="text-6xl font-black text-black break-words w-full px-6 leading-tight"></div>
-        <!-- 英文提升至極大字體 text-7xl -->
         <div id="overlay-text-en" class="text-7xl font-black text-blue-700 mt-10 break-words w-full px-6 italic uppercase tracking-tighter"></div>
         <div class="mt-auto pb-10 text-gray-400 text-xl font-medium">點擊螢幕關閉</div>
     </div>
@@ -393,12 +392,17 @@
             closeAddModal();
         };
 
+        // 加入防止誤刪邏輯
         window.deleteFromCloud = async function(event, cat, idx) {
             event.stopPropagation();
-            if(confirm("確定刪除？")) {
+            const confirmCode = prompt(`確定要刪除「${currentData[cat][idx].text}」嗎？\n請輸入大寫「KIWI」以確認：`);
+            
+            if (confirmCode === "KIWI") {
                 const newData = { ...currentData };
                 newData[cat].splice(idx, 1);
                 await setDoc(docRef, newData);
+            } else if (confirmCode !== null) {
+                alert("驗證碼錯誤，取消刪除。");
             }
         };
 
