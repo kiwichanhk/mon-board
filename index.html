@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>日常溝通板 - 中英對照版</title>
+    <title>日常溝通板 - 專業照護版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -11,7 +11,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             touch-action: manipulation;
             background-color: #f1f5f9;
-            padding-bottom: 80px;
+            padding-bottom: 140px; /* 預留底部導覽空間 */
             scroll-behavior: smooth;
         }
         .grid-item {
@@ -44,19 +44,21 @@
         }
         .delete-btn {
             position: absolute;
-            top: -8px;
-            right: -8px;
+            top: -10px;
+            right: -10px;
             background: #ef4444;
             color: white;
             border-radius: 50%;
-            width: 32px;
-            height: 32px;
+            width: 40px;
+            height: 40px;
             display: none;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
-            z-index: 10;
-            border: 2px solid white;
+            font-size: 20px;
+            z-index: 100;
+            border: 3px solid white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+            cursor: pointer;
         }
         .editing .delete-btn {
             display: flex;
@@ -77,106 +79,173 @@
             background: rgba(241, 245, 249, 0.9);
             backdrop-filter: blur(8px);
         }
+        /* 底部導覽設計 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid #e2e8f0;
+            padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+            z-index: 900;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.05);
+        }
         .loader {
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
+            border-top: 4px solid #3b82f6;
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
+            width: 40px;
+            height: 40px;
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .chart-container {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .filter-btn {
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            background: #f1f5f9;
+            color: #64748b;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .filter-btn.active {
+            background: #3b82f6;
+            color: white;
+            font-weight: bold;
+        }
+        
+        #back-to-top {
+            position: fixed;
+            bottom: 120px;
+            right: 20px;
+            width: 45px;
+            height: 45px;
+            background-color: rgba(31, 41, 55, 0.8);
+            color: white;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: opacity 0.3s;
+            border: none;
+        }
     </style>
 </head>
 <body class="p-4">
 
+    <!-- 頂部標題 -->
     <header class="mb-4 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm">
         <div>
-            <h1 class="text-xl font-bold text-gray-800">雲端溝通輔助 (Bilingual)</h1>
+            <h1 class="text-xl font-bold text-gray-800">照護溝通板</h1>
             <div class="flex items-center gap-2">
                 <span id="sync-status" class="w-2 h-2 rounded-full bg-yellow-500"></span>
                 <p id="mode-text" class="text-xs text-gray-500">初始化中...</p>
             </div>
         </div>
         <div class="flex gap-2">
-            <button onclick="openStats()" class="bg-blue-50 px-3 py-2 rounded-xl font-medium text-blue-600 border border-blue-100">
-                📊 統計
-            </button>
-            <button id="edit-toggle" onclick="toggleEditMode()" class="bg-gray-100 px-3 py-2 rounded-xl font-medium text-gray-600">
-                ⚙️ 管理
-            </button>
+            <button onclick="openStats()" class="bg-blue-600 px-3 py-2 rounded-xl font-medium text-white shadow-sm">📊 統計</button>
+            <button id="edit-toggle" onclick="toggleEditMode()" class="bg-gray-100 px-3 py-2 rounded-xl font-medium text-gray-600">⚙️ 管理</button>
         </div>
     </header>
 
+    <!-- 頂部分類導覽 -->
     <nav class="nav-sticky mb-6 py-2">
-        <div class="grid grid-cols-3 gap-2 text-sm">
-            <button onclick="scrollToCategory('食物飲品')" class="bg-green-500 text-white py-6 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center">
-                🍎 食物飲品
-            </button>
-            <button onclick="scrollToCategory('日常需求')" class="bg-blue-500 text-white py-6 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center">
-                🏠 日常需求
-            </button>
-            <button onclick="scrollToCategory('活動')" class="bg-purple-500 text-white py-6 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center">
-                🏃 活動項目
-            </button>
+        <div class="grid grid-cols-3 gap-2">
+            <button onclick="scrollToCategory('食物飲品')" class="bg-green-500 text-white py-4 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform">🍎 食物</button>
+            <button onclick="scrollToCategory('日常需求')" class="bg-blue-500 text-white py-4 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform">🏠 需求</button>
+            <button onclick="scrollToCategory('活動')" class="bg-purple-500 text-white py-4 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform">🏃 活動</button>
         </div>
     </nav>
 
+    <!-- 主內容區 -->
     <div id="board-container" class="space-y-8">
-        <div class="flex flex-col items-center justify-center p-10">
+        <div class="flex flex-col items-center justify-center p-20">
             <div class="loader mb-4"></div>
-            <p id="loading-msg" class="text-gray-400 text-sm">正在嘗試連線...</p>
+            <p id="loading-msg" class="text-gray-400 text-sm">正在同步雲端資料...</p>
         </div>
     </div>
 
+    <!-- 底部分類導覽 (風格與頂部一致) -->
+    <div class="bottom-nav">
+        <div class="grid grid-cols-3 gap-2">
+            <button onclick="scrollToCategory('食物飲品')" class="bg-green-500 text-white py-4 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform">🍎 食物</button>
+            <button onclick="scrollToCategory('日常需求')" class="bg-blue-500 text-white py-4 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform">🏠 需求</button>
+            <button onclick="scrollToCategory('活動')" class="bg-purple-500 text-white py-4 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-transform">🏃 活動</button>
+        </div>
+    </div>
+
+    <!-- 統計顯示層 -->
     <div id="stats-modal">
         <div class="w-full max-w-md">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold">今日需求統計</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">需求統計報告</h2>
                 <button onclick="closeStats()" class="text-gray-400 text-3xl">&times;</button>
             </div>
-            
-            <div class="bg-gray-50 p-4 rounded-2xl mb-6">
+            <div class="mb-6 flex items-center justify-center gap-2 bg-gray-100 p-2 rounded-xl">
+                <span class="text-gray-600 font-medium">查看日期:</span>
+                <input type="date" id="stats-date-picker" class="bg-white border-none rounded-lg p-1 text-blue-600 font-bold" onchange="renderStats()">
+            </div>
+            <div class="chart-container">
+                <h3 class="text-left text-sm font-bold text-gray-400 mb-2 uppercase">需求比例</h3>
                 <canvas id="statsChart"></canvas>
             </div>
-
-            <h3 class="text-left font-bold text-gray-500 mb-3 px-2">今日記錄 (按時間排序)</h3>
-            <div id="stats-list" class="space-y-2 mb-10">
-                </div>
-            
-            <button onclick="closeStats()" class="w-full bg-gray-800 text-white py-4 rounded-2xl font-bold mb-10">關閉 / Close</button>
+            <div class="chart-container">
+                <h3 class="text-left text-sm font-bold text-gray-400 mb-2 uppercase">時間分佈</h3>
+                <div id="item-filters" class="flex gap-2 overflow-x-auto pb-2 mb-2 no-scrollbar"></div>
+                <canvas id="timeLineChart"></canvas>
+            </div>
+            <h3 class="text-left font-bold text-gray-500 mb-3 px-2">歷史清單</h3>
+            <div id="stats-list" class="space-y-2 mb-10 text-left"></div>
+            <button onclick="closeStats()" class="w-full bg-gray-800 text-white py-4 rounded-2xl font-bold mb-10">關閉</button>
         </div>
     </div>
 
+    <!-- 放大顯示層 -->
     <div id="overlay" onclick="hideMessage()">
-        <div id="overlay-emoji" class="text-9xl mb-8 mt-20"></div>
-        <div id="overlay-text" class="text-5xl font-bold text-black break-words w-full px-6 leading-tight"></div>
-        <div id="overlay-text-en" class="text-5xl font-bold text-blue-700 mt-6 break-words w-full px-6 italic"></div>
-        <div class="mt-20 text-gray-300 text-xl italic">Tap to close / 點擊關閉</div>
+        <div id="overlay-emoji" class="text-9xl mb-8 mt-12"></div>
+        <div id="overlay-text" class="text-5xl font-bold text-black break-words w-full px-6"></div>
+        <div id="overlay-text-en" class="text-4xl font-bold text-blue-700 mt-6 italic"></div>
+        <div class="mt-auto pb-10 text-gray-400">點擊螢幕關閉</div>
     </div>
 
+    <!-- 管理對話框 -->
     <div id="add-modal" class="fixed inset-0 bg-black/60 hidden z-[3000] flex items-center justify-center p-6 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl overflow-y-auto max-h-[90vh]">
-            <h3 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">新增按鈕</h3>
-            <label class="block text-sm font-medium text-gray-700 mb-1">分類</label>
-            <select id="new-category" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-4 text-lg">
+        <div class="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl">
+            <h3 class="text-2xl font-bold mb-6">新增功能</h3>
+            <label class="block text-sm font-medium mb-1">分類</label>
+            <select id="new-category" class="w-full bg-gray-50 p-3 rounded-xl mb-4">
                 <option value="食物飲品">🍎 食物飲品</option>
                 <option value="日常需求">🏠 日常需求</option>
                 <option value="活動">🏃 活動</option>
                 <option value="其他">💬 其他</option>
             </select>
-            <label class="block text-sm font-medium text-gray-700 mb-1">圖標 (Emoji)</label>
-            <input type="text" id="new-emoji" placeholder="例如: 🍱" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-4 text-lg">
-            <label class="block text-sm font-medium text-gray-700 mb-1">中文名稱</label>
-            <input type="text" id="new-text" placeholder="例如: 我想喝水" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-4 text-lg">
-            <label class="block text-sm font-medium text-gray-700 mb-1">英文翻譯</label>
-            <input type="text" id="new-text-en" placeholder="e.g. I want water" class="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-6 text-lg">
+            <input type="text" id="new-emoji" placeholder="Emoji (例如 🍱)" class="w-full bg-gray-50 p-3 rounded-xl mb-4">
+            <input type="text" id="new-text" placeholder="中文名稱" class="w-full bg-gray-50 p-3 rounded-xl mb-4">
+            <input type="text" id="new-text-en" placeholder="英文名稱" class="w-full bg-gray-50 p-3 rounded-xl mb-6">
             <div class="flex gap-3">
-                <button onclick="closeAddModal()" class="flex-1 bg-gray-100 py-4 rounded-2xl font-bold text-gray-500">取消</button>
+                <button onclick="closeAddModal()" class="flex-1 bg-gray-100 py-4 rounded-2xl font-bold">取消</button>
                 <button onclick="saveToCloud()" class="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-bold">儲存</button>
             </div>
         </div>
     </div>
+
+    <button id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑</button>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -202,61 +271,47 @@
         let categories = ["食物飲品", "日常需求", "活動", "其他"];
         let currentData = { logs: [] };
         let user = null;
-        let isSyncing = false;
         let chartInstance = null;
+        let lineChartInstance = null;
+        let selectedFilterItem = "所有項目";
 
         async function init() {
+            document.getElementById('stats-date-picker').valueAsDate = new Date();
             try {
                 await signInAnonymously(auth);
                 onAuthStateChanged(auth, (u) => {
                     user = u;
                     if (user) subscribeToData();
                 });
-            } catch (err) { handleConnectionError(err); }
+            } catch (err) { console.error(err); }
+
+            window.addEventListener('scroll', () => {
+                const btn = document.getElementById('back-to-top');
+                btn.style.display = window.scrollY > 300 ? 'flex' : 'none';
+            });
         }
 
         function subscribeToData() {
             onSnapshot(docRef, (docSnap) => {
-                isSyncing = true;
                 if (docSnap.exists()) {
                     currentData = docSnap.data();
-                    if (!currentData.logs) currentData.logs = [];
                 } else {
-                    currentData = { ...getInitialData(), logs: [] };
+                    currentData = {
+                        "食物飲品": [{text: "喝水", textEn: "Water", emoji: "💧"}],
+                        "日常需求": [{text: "翻身", textEn: "Turn body", emoji: "🛌"}],
+                        "活動": [{text: "電視", textEn: "TV", emoji: "📺"}],
+                        "其他": [{text: "謝謝", textEn: "Thanks", emoji: "❤️"}],
+                        logs: []
+                    };
                     setDoc(docRef, currentData);
                 }
-                document.getElementById('sync-status').classList.replace('bg-yellow-500', 'bg-green-500');
-                document.getElementById('mode-text').innerText = "已同步/Synced";
+                document.getElementById('sync-status').className = 'w-2 h-2 rounded-full bg-green-500';
+                document.getElementById('mode-text').innerText = "已連線";
                 renderBoard();
-            }, (error) => handleConnectionError(error));
-        }
-
-        function handleConnectionError(err) {
-            document.getElementById('mode-text').innerText = "離線模式";
-            currentData = { ...getInitialData(), logs: [] };
-            renderBoard();
-        }
-
-        function getInitialData() {
-            return {
-                "食物飲品": [
-                    {text: "吃稀飯", textEn: "Eat Porridge", emoji: "🥣", count: 0}, 
-                    {text: "喝水", textEn: "Drink Water", emoji: "💧", count: 0}
-                ],
-                "日常需求": [
-                    {text: "去廁所", textEn: "Go to Toilet", emoji: "🚽", count: 0}, 
-                    {text: "要洗臉", textEn: "Wash Face", emoji: "🧼", count: 0},
-                    {text: "要翻身", textEn: "Turn Over", emoji: "🛌", count: 0}
-                ],
-                "活動": [
-                    {text: "想散步", textEn: "Go for walk", emoji: "🚶", count: 0}, 
-                    {text: "看電視", textEn: "Watch TV", emoji: "📺", count: 0}
-                ],
-                "其他": [
-                    {text: "謝謝你", textEn: "Thank you", emoji: "❤️", count: 0},
-                    {text: "不舒服", textEn: "Uncomfortable", emoji: "⚠️", count: 0}
-                ]
-            };
+                if(document.getElementById('stats-modal').style.display === 'flex') renderStats();
+            }, (error) => {
+                document.getElementById('mode-text').innerText = "連線失敗";
+            });
         }
 
         window.renderBoard = function() {
@@ -264,24 +319,22 @@
             container.innerHTML = '';
             categories.forEach(cat => {
                 let items = currentData[cat] || [];
-                if (items.length === 0 && !isEditMode) return;
-                const sortedItems = items.map((item, idx) => ({...item, originalIdx: idx}))
-                                         .sort((a, b) => (b.count || 0) - (a.count || 0));
-
+                if (!isEditMode && items.length === 0) return;
+                
                 const section = document.createElement('section');
                 section.id = `section-${cat}`;
                 section.className = "mb-8 scroll-mt-24";
                 section.innerHTML = `
                     <h2 class="text-sm font-bold text-gray-400 mb-3 px-1 tracking-widest uppercase flex items-center gap-2">
-                        <span class="w-1 h-4 bg-current rounded-full" style="color: ${getStyle(cat)}"></span>${cat}
+                        <span class="w-1 h-4 bg-blue-500 rounded-full"></span>${cat}
                     </h2>
                     <div class="grid grid-cols-2 gap-4">
-                        ${sortedItems.map(item => `
-                            <div class="grid-item ${isEditMode ? 'editing' : ''}" onclick="handleItemClick('${cat}', ${item.originalIdx})">
-                                <button class="delete-btn" onclick="deleteFromCloud(event, '${cat}', ${item.originalIdx})">✕</button>
+                        ${items.map((item, idx) => `
+                            <div class="grid-item ${isEditMode ? 'editing' : ''}" onclick="handleItemClick(event, '${cat}', ${idx})">
+                                <button class="delete-btn" onclick="deleteFromCloud(event, '${cat}', ${idx})">✕</button>
                                 <span class="text-4xl mb-1">${item.emoji}</span>
                                 <span class="text-lg leading-tight text-gray-800">${item.text}</span>
-                                <span class="text-[12px] text-blue-600 font-bold mt-1">${item.textEn || ''}</span>
+                                <span class="text-xs text-blue-600 font-bold mt-1">${item.textEn || ''}</span>
                             </div>
                         `).join('')}
                         ${isEditMode ? `<div class="grid-item border-2 border-dashed border-gray-300 shadow-none bg-transparent" onclick="openAddModal()"><span class="text-3xl">+</span></div>` : ''}
@@ -291,149 +344,116 @@
             });
         }
 
-        function getStyle(cat) {
-            if(cat === "食物飲品") return "#22c55e";
-            if(cat === "日常需求") return "#3b82f6";
-            if(cat === "活動") return "#a855f7";
-            return "#9ca3af";
-        }
-
-        window.handleItemClick = async function(cat, originalIndex) {
-            if (isEditMode) return;
-            const item = currentData[cat][originalIndex];
+        window.handleItemClick = async function(event, cat, index) {
+            if (event.target.classList.contains('delete-btn') || isEditMode) return;
+            const item = currentData[cat][index];
             
-            // 顯示與語音 [cite: 68, 69, 70, 71, 72]
             document.getElementById('overlay-text').innerText = item.text;
             document.getElementById('overlay-text-en').innerText = item.textEn || '';
             document.getElementById('overlay-emoji').innerText = item.emoji;
             document.getElementById('overlay').style.display = 'flex';
-
+            
+            // 語音播放
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
-                const msg = new SpeechSynthesisUtterance(item.text);
-                msg.lang = 'zh-HK';
-                window.speechSynthesis.speak(msg);
+                const uCn = new SpeechSynthesisUtterance(item.text);
+                uCn.lang = 'zh-HK';
+                const uEn = new SpeechSynthesisUtterance(item.textEn);
+                uEn.lang = 'en-US';
+                window.speechSynthesis.speak(uCn);
+                window.speechSynthesis.speak(uEn);
             }
 
-            // 更新數據與日誌 (新增日誌功能) 
-            if (user && isSyncing) {
-                const newData = { ...currentData };
-                newData[cat][originalIndex].count = (newData[cat][originalIndex].count || 0) + 1;
-                
-                // 記錄時間戳記與內容
-                const logEntry = {
-                    time: new Date().toISOString(),
-                    text: item.text,
-                    emoji: item.emoji
-                };
-                if(!newData.logs) newData.logs = [];
-                newData.logs.push(logEntry);
-                
-                // 只保留最近 200 筆避免數據過大
-                if(newData.logs.length > 200) newData.logs.shift();
-                
-                try { await setDoc(docRef, newData); } catch (e) {}
-            }
+            // 紀錄 Log
+            const newData = { ...currentData };
+            if(!newData.logs) newData.logs = [];
+            newData.logs.push({ time: new Date().toISOString(), text: item.text, emoji: item.emoji });
+            if(newData.logs.length > 500) newData.logs.shift();
+            await setDoc(docRef, newData);
         };
 
-        // 統計相關功能
-        window.openStats = function() {
-            document.getElementById('stats-modal').style.display = 'flex';
-            renderStats();
-        };
-
-        window.closeStats = function() {
-            document.getElementById('stats-modal').style.display = 'none';
-        };
-
-        function renderStats() {
+        window.renderStats = function() {
             const listContainer = document.getElementById('stats-list');
+            const filterContainer = document.getElementById('item-filters');
+            const selectedDate = document.getElementById('stats-date-picker').value;
             listContainer.innerHTML = '';
-            
-            const now = new Date();
-            const todayStr = now.toLocaleDateString();
-            
-            // 篩選今日日誌
-            const todayLogs = (currentData.logs || []).filter(log => 
-                new Date(log.time).toLocaleDateString() === todayStr
-            ).reverse();
 
-            // 生成列表
-            if(todayLogs.length === 0) {
-                listContainer.innerHTML = `<p class="text-gray-400 py-10">今日尚無紀錄</p>`;
+            const logsOnDate = (currentData.logs || []).filter(log => log.time.startsWith(selectedDate));
+            const reversedLogs = [...logsOnDate].reverse();
+
+            if(reversedLogs.length === 0) {
+                listContainer.innerHTML = `<p class="text-center text-gray-400 py-10">無紀錄</p>`;
             } else {
-                todayLogs.forEach(log => {
-                    const timeStr = new Date(log.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                reversedLogs.forEach(log => {
+                    const t = new Date(log.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     const div = document.createElement('div');
-                    div.className = "flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500";
-                    div.innerHTML = `
-                        <div class="flex items-center gap-3">
-                            <span class="text-2xl">${log.emoji}</span>
-                            <span class="font-bold text-gray-700">${log.text}</span>
-                        </div>
-                        <span class="text-sm text-gray-400 font-mono">${timeStr}</span>
-                    `;
+                    div.className = "flex justify-between items-center bg-gray-50 p-4 rounded-xl mb-2 text-left";
+                    div.innerHTML = `<span>${log.emoji} ${log.text}</span><span class="text-xs text-gray-400">${t}</span>`;
                     listContainer.appendChild(div);
                 });
             }
 
-            // 生成圖表數據
+            // 圓餅圖
             const counts = {};
-            todayLogs.forEach(log => counts[log.text] = (counts[log.text] || 0) + 1);
-            
-            const ctx = document.getElementById('statsChart').getContext('2d');
+            logsOnDate.forEach(l => counts[l.text] = (counts[l.text] || 0) + 1);
             if (chartInstance) chartInstance.destroy();
-            
-            chartInstance = new Chart(ctx, {
-                type: 'doughnut',
+            chartInstance = new Chart(document.getElementById('statsChart'), {
+                type: 'pie',
                 data: {
                     labels: Object.keys(counts),
-                    datasets: [{
-                        data: Object.values(counts),
-                        backgroundColor: ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#ec4899'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { 
-                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 12 } } }
-                    }
+                    datasets: [{ data: Object.values(counts), backgroundColor: ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'] }]
                 }
             });
-        }
 
-        // 基礎功能 (保持原樣) [cite: 75-88]
-        window.toggleEditMode = () => {
-            isEditMode = !isEditMode;
-            const btn = document.getElementById('edit-toggle');
-            btn.innerText = isEditMode ? '✅ 完成' : '⚙️ 管理';
-            renderBoard();
+            // 曲線圖
+            const hourly = Array(24).fill(0);
+            logsOnDate.forEach(l => {
+                if(selectedFilterItem === "所有項目" || l.text === selectedFilterItem) {
+                    hourly[new Date(l.time).getHours()]++;
+                }
+            });
+            if (lineChartInstance) lineChartInstance.destroy();
+            lineChartInstance = new Chart(document.getElementById('timeLineChart'), {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${i}h`),
+                    datasets: [{ label: selectedFilterItem, data: hourly, borderColor: '#3b82f6', tension: 0.3, fill: true }]
+                }
+            });
+
+            // 篩選按鈕
+            const items = ["所有項目", ...Object.keys(counts)];
+            filterContainer.innerHTML = items.map(i => `
+                <button onclick="window.updateFilter('${i}')" class="filter-btn ${selectedFilterItem === i ? 'active' : ''}">${i}</button>
+            `).join('');
         };
-        window.scrollToCategory = (cat) => {
-            const el = document.getElementById(`section-${cat}`);
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-        };
+
+        window.updateFilter = (i) => { selectedFilterItem = i; renderStats(); };
+        window.toggleEditMode = () => { isEditMode = !isEditMode; document.getElementById('edit-toggle').innerText = isEditMode ? '✅ 完成' : '⚙️ 管理'; renderBoard(); };
+        window.openStats = () => { document.getElementById('stats-modal').style.display = 'flex'; renderStats(); };
+        window.closeStats = () => document.getElementById('stats-modal').style.display = 'none';
         window.hideMessage = () => document.getElementById('overlay').style.display = 'none';
+        window.scrollToCategory = (cat) => document.getElementById(`section-${cat}`).scrollIntoView({behavior: 'smooth'});
         window.openAddModal = () => document.getElementById('add-modal').style.display = 'flex';
         window.closeAddModal = () => document.getElementById('add-modal').style.display = 'none';
+        
         window.saveToCloud = async function() {
             const cat = document.getElementById('new-category').value;
             const emoji = document.getElementById('new-emoji').value || '💬';
             const text = document.getElementById('new-text').value;
             const textEn = document.getElementById('new-text-en').value;
-            if (!text) return alert("請輸入名稱");
+            if(!text || !textEn) return alert("請輸入名稱");
             const newData = { ...currentData };
-            if (!newData[cat]) newData[cat] = [];
-            newData[cat].push({ text, textEn, emoji, count: 0 });
+            newData[cat].push({ text, textEn, emoji });
             await setDoc(docRef, newData);
             closeAddModal();
         };
-        window.deleteFromCloud = async function(event, cat, originalIndex) {
+
+        window.deleteFromCloud = async function(event, cat, idx) {
             event.stopPropagation();
-            if (confirm(`確定刪除?`)) {
+            if(confirm("確定刪除？")) {
                 const newData = { ...currentData };
-                newData[cat].splice(originalIndex, 1);
+                newData[cat].splice(idx, 1);
                 await setDoc(docRef, newData);
             }
         };
